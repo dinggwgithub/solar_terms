@@ -100,11 +100,10 @@ const docTemplate = `{
                         "enum": [
                             "instability",
                             "constraint",
-                            "precision",
-                            "none"
+                            "precision"
                         ],
                         "type": "string",
-                        "default": "none",
+                        "default": "constraint",
                         "description": "bug类型",
                         "name": "bug_type",
                         "in": "query"

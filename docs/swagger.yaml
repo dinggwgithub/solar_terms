@@ -181,13 +181,12 @@ paths:
       - application/json
       description: 执行带有bug的科学计算（结果不稳定、约束越界、精度错误）
       parameters:
-      - default: none
+      - default: constraint
         description: bug类型
         enum:
         - instability
         - constraint
         - precision
-        - none
         in: query
         name: bug_type
         type: string

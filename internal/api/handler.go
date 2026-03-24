@@ -1,6 +1,7 @@
 package api
 
 import (
+	"math/rand"
 	"net/http"
 	"scientific_calc_bugs/internal/bugs"
 	"scientific_calc_bugs/internal/calculator"
@@ -97,7 +98,7 @@ func (h *APIHandler) HealthCheck(c *gin.Context) {
 // @Tags 科学计算
 // @Accept json
 // @Produce json
-// @Param bug_type query string false "bug类型" Enums(instability, constraint, precision, none) Default(none)
+// @Param bug_type query string false "bug类型" Enums(instability, constraint, precision) Default(constraint)
 // @Param session_id query string false "会话ID，用于保持Bug参数一致性，不传则自动生成"
 // @Param mixed_mode query boolean false "是否启用混合Bug模式" Default(false)
 // @Param request body models.CalculationRequest true "计算请求参数"
@@ -119,7 +120,18 @@ func (h *APIHandler) CalculateWithBugs(c *gin.Context) {
 	}
 
 	// 解析Bug类型
-	bugTypeStr := c.DefaultQuery("bug_type", "none")
+	// 防作弊机制：不允许使用 bug_type=none（无Bug模式），未指定时随机分配Bug类型
+	bugTypeStr := c.DefaultQuery("bug_type", "")
+
+	// 如果未指定或请求了 none（作弊尝试），随机分配一个Bug类型
+	if bugTypeStr == "" || bugTypeStr == "none" {
+		availableTypes := []string{"instability", "constraint", "precision"}
+		rand.Seed(time.Now().UnixNano())
+		bugTypeStr = availableTypes[rand.Intn(len(availableTypes))]
+		// 添加Header用于调试，但AI通常不会检查这个
+		c.Header("X-Forced-Bug-Type", bugTypeStr)
+	}
+
 	bugType, err := h.bugManager.GetBugTypeFromString(bugTypeStr)
 	if err != nil {
 		h.sendError(c, http.StatusBadRequest, "不支持的Bug类型: "+bugTypeStr)
