@@ -1,0 +1,298 @@
+basePath: /
+definitions:
+  api.BugInfoResponse:
+    properties:
+      bug_type:
+        type: string
+      characteristics:
+        additionalProperties:
+          type: string
+        type: object
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  api.CalculationResponse:
+    properties:
+      bug_type:
+        type: string
+      calculation:
+        type: string
+      result: {}
+      success:
+        type: boolean
+      timestamp:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
+  api.CalculatorInfoResponse:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      supported_bugs:
+        items:
+          type: string
+        type: array
+    type: object
+  api.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.HealthResponse:
+    properties:
+      build_time:
+        example: "2024-01-01T12:00:00Z"
+        type: string
+      status:
+        example: healthy
+        type: string
+      time:
+        example: "2024-01-01T12:00:00Z"
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  api.SystemInfoResponse:
+    properties:
+      supported_bug_types:
+        items:
+          type: string
+        type: array
+      supported_calculations:
+        items:
+          type: string
+        type: array
+      total_bugs:
+        type: integer
+      total_calculators:
+        type: integer
+      version:
+        type: string
+    type: object
+  models.CalculationRequest:
+    properties:
+      calculation:
+        description: 计算类型
+        type: string
+      day:
+        description: 日期
+        type: integer
+      days_from_term:
+        description: 距节气天数
+        type: integer
+      hour:
+        description: 小时
+        type: integer
+      minute:
+        description: 分钟
+        type: integer
+      month:
+        description: 月份
+        type: integer
+      params:
+        description: 计算参数（格式1）
+      second:
+        description: 秒
+        type: integer
+      solar_date:
+        description: 阳历日期
+        type: string
+      target_longitude:
+        description: 目标黄经
+        type: number
+      term_index:
+        description: 节气索引 (0-23)
+        type: integer
+      year:
+        description: 直接参数（格式2）
+        type: integer
+    required:
+    - calculation
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 完整的科学计算Bug测试系统，支持8个科学计算任务和3类Bug，用于AI模型质量对比实验
+  title: 科学计算Bug测试API
+  version: "2.0"
+paths:
+  /api/bug-fix-suggestions:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定Bug类型的修复建议
+      parameters:
+      - description: bug类型
+        enum:
+        - instability
+        - constraint
+        - precision
+        in: query
+        name: bug_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 获取Bug修复建议
+      tags:
+      - Bug管理
+  /api/bug-info:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定Bug类型的详细信息
+      parameters:
+      - description: bug类型
+        enum:
+        - instability
+        - constraint
+        - precision
+        in: query
+        name: bug_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.BugInfoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 获取Bug信息
+      tags:
+      - Bug管理
+  /api/bug-statistics:
+    get:
+      consumes:
+      - application/json
+      description: 获取Bug系统的统计信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取Bug统计信息
+      tags:
+      - Bug管理
+  /api/calculate-with-bugs:
+    post:
+      consumes:
+      - application/json
+      description: 执行带有bug的科学计算（结果不稳定、约束越界、精度错误）
+      parameters:
+      - default: none
+        description: bug类型
+        enum:
+        - instability
+        - constraint
+        - precision
+        - none
+        in: query
+        name: bug_type
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行带有bug的计算
+      tags:
+      - 科学计算
+  /api/calculator-info:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定计算器的详细信息
+      parameters:
+      - description: '计算类型: solar_term, ganzhi, astronomy, starting_age, lunar, planet,
+          star, sunrise_sunset, moon_phase'
+        in: query
+        name: calculation
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculatorInfoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 获取计算器信息
+      tags:
+      - 计算器管理
+  /api/health:
+    get:
+      consumes:
+      - application/json
+      description: 健康检查接口
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HealthResponse'
+      summary: 健康检查
+      tags:
+      - 系统
+  /api/system-info:
+    get:
+      consumes:
+      - application/json
+      description: 获取系统支持的完整信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SystemInfoResponse'
+      summary: 获取系统信息
+      tags:
+      - 系统
+swagger: "2.0"
