@@ -156,16 +156,7 @@ func (b *ConstraintBug) GetBugCharacteristics() map[string]string {
 	}
 }
 
-// GetFixSuggestions 返回修复建议
-func (b *ConstraintBug) GetFixSuggestions() []string {
-	return []string{
-		"添加输入参数验证",
-		"实现边界条件检查",
-		"使用断言确保计算结果有效性",
-		"添加默认值处理",
-		"实现错误处理机制",
-	}
-}
+
 
 // ValidateConstraints 验证约束条件（修复后的示例）
 func (b *ConstraintBug) ValidateConstraints(result interface{}, calculationType string) error {

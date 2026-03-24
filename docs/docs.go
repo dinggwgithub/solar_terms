@@ -15,50 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/bug-fix-suggestions": {
-            "get": {
-                "description": "获取指定Bug类型的修复建议",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bug管理"
-                ],
-                "summary": "获取Bug修复建议",
-                "parameters": [
-                    {
-                        "enum": [
-                            "instability",
-                            "constraint",
-                            "precision"
-                        ],
-                        "type": "string",
-                        "description": "bug类型",
-                        "name": "bug_type",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/bug-info": {
             "get": {
                 "description": "获取指定Bug类型的详细信息",
@@ -151,6 +107,19 @@ const docTemplate = `{
                         "default": "none",
                         "description": "bug类型",
                         "name": "bug_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持Bug参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "是否启用混合Bug模式",
+                        "name": "mixed_mode",
                         "in": "query"
                     },
                     {
@@ -295,6 +264,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "result": {},
+                "session_id": {
+                    "type": "string"
+                },
                 "success": {
                     "type": "boolean"
                 },

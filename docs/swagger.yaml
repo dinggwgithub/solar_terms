@@ -20,6 +20,8 @@ definitions:
       calculation:
         type: string
       result: {}
+      session_id:
+        type: string
       success:
         type: boolean
       timestamp:
@@ -128,36 +130,6 @@ info:
   title: 科学计算Bug测试API
   version: "2.0"
 paths:
-  /api/bug-fix-suggestions:
-    get:
-      consumes:
-      - application/json
-      description: 获取指定Bug类型的修复建议
-      parameters:
-      - description: bug类型
-        enum:
-        - instability
-        - constraint
-        - precision
-        in: query
-        name: bug_type
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: 获取Bug修复建议
-      tags:
-      - Bug管理
   /api/bug-info:
     get:
       consumes:
@@ -219,6 +191,15 @@ paths:
         in: query
         name: bug_type
         type: string
+      - description: 会话ID，用于保持Bug参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - default: false
+        description: 是否启用混合Bug模式
+        in: query
+        name: mixed_mode
+        type: boolean
       - description: 计算请求参数
         in: body
         name: request

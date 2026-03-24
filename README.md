@@ -1,4 +1,4 @@
-# 科学计算Bug测试项目（改进版）
+# 科学计算Bug测试项目
 
 基于规划文档先进设计理念重构的Go科学计算项目，用于AI模型在科学计算领域的质量对比实验。
 
@@ -467,18 +467,6 @@ curl -X GET "http://localhost:8080/api/bug-info"
 
 # 获取特定Bug类型信息
 curl -X GET "http://localhost:8080/api/bug-info?bug_type=instability"
-```
-
-#### 获取Bug修复建议
-```bash
-# 获取结果不稳定Bug的修复建议
-curl -X GET "http://localhost:8080/api/bug-fix-suggestions?bug_type=instability"
-
-# 获取约束越界Bug的修复建议
-curl -X GET "http://localhost:8080/api/bug-fix-suggestions?bug_type=constraint"
-
-# 获取精度错误Bug的修复建议
-curl -X GET "http://localhost:8080/api/bug-fix-suggestions?bug_type=precision"
 ```
 
 #### 获取系统信息

@@ -40,6 +40,7 @@ type CalculationResponse struct {
 	Timestamp   string      `json:"timestamp"`
 	BugType     string      `json:"bug_type,omitempty"`
 	Calculation string      `json:"calculation"`
+	SessionID   string      `json:"session_id,omitempty"`
 }
 
 // ErrorResponse 错误响应
@@ -97,6 +98,8 @@ func (h *APIHandler) HealthCheck(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param bug_type query string false "bug类型" Enums(instability, constraint, precision, none) Default(none)
+// @Param session_id query string false "会话ID，用于保持Bug参数一致性，不传则自动生成"
+// @Param mixed_mode query boolean false "是否启用混合Bug模式" Default(false)
 // @Param request body models.CalculationRequest true "计算请求参数"
 // @Success 200 {object} CalculationResponse
 // @Failure 400 {object} ErrorResponse
@@ -123,14 +126,23 @@ func (h *APIHandler) CalculateWithBugs(c *gin.Context) {
 		return
 	}
 
+	// 获取或生成会话ID（用于保持Bug参数一致性）
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = bugs.GenerateSessionID()
+	}
+
+	// 解析混合模式
+	mixedMode := c.DefaultQuery("mixed_mode", "false") == "true"
+
 	// 执行计算
-	result, warnings, err := h.calculatorManager.Calculate(calcType, req.GetParams(), bugType)
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), bugType, sessionID, mixedMode)
 	if err != nil {
 		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
 		return
 	}
 
-	h.sendSuccess(c, result, warnings, bugType.String(), req.Calculation)
+	h.sendSuccess(c, result, warnings, bugType.String(), req.Calculation, sessionID)
 }
 
 // GetBugInfo 获取Bug信息接口
@@ -177,41 +189,6 @@ func (h *APIHandler) GetBugInfo(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
-}
-
-// GetBugFixSuggestions 获取Bug修复建议接口
-// @Summary 获取Bug修复建议
-// @Description 获取指定Bug类型的修复建议
-// @Tags Bug管理
-// @Accept json
-// @Produce json
-// @Param bug_type query string true "bug类型" Enums(instability, constraint, precision)
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
-// @Router /api/bug-fix-suggestions [get]
-func (h *APIHandler) GetBugFixSuggestions(c *gin.Context) {
-	bugTypeStr := c.Query("bug_type")
-	if bugTypeStr == "" {
-		h.sendError(c, http.StatusBadRequest, "缺少bug_type参数")
-		return
-	}
-
-	bugType, err := h.bugManager.GetBugTypeFromString(bugTypeStr)
-	if err != nil {
-		h.sendError(c, http.StatusBadRequest, "不支持的Bug类型: "+bugTypeStr)
-		return
-	}
-
-	suggestions, err := h.bugManager.GetBugFixSuggestions(bugType)
-	if err != nil {
-		h.sendError(c, http.StatusBadRequest, "获取修复建议失败: "+err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, map[string]interface{}{
-		"bug_type":    bugType.String(),
-		"suggestions": suggestions,
-	})
 }
 
 // GetCalculatorInfo 获取计算器信息接口
@@ -314,7 +291,7 @@ func (h *APIHandler) GetBugStatistics(c *gin.Context) {
 }
 
 // sendSuccess 发送成功响应
-func (h *APIHandler) sendSuccess(c *gin.Context, result interface{}, warnings []string, bugType, calculation string) {
+func (h *APIHandler) sendSuccess(c *gin.Context, result interface{}, warnings []string, bugType, calculation string, sessionID ...string) {
 	response := CalculationResponse{
 		Success:     true,
 		Result:      result,
@@ -322,6 +299,10 @@ func (h *APIHandler) sendSuccess(c *gin.Context, result interface{}, warnings []
 		Timestamp:   time.Now().Format(time.RFC3339),
 		BugType:     bugType,
 		Calculation: calculation,
+	}
+
+	if len(sessionID) > 0 && sessionID[0] != "" {
+		response.SessionID = sessionID[0]
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -349,7 +330,6 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// Bug管理接口
 	router.GET("/api/bug-info", h.GetBugInfo)
-	router.GET("/api/bug-fix-suggestions", h.GetBugFixSuggestions)
 	router.GET("/api/bug-statistics", h.GetBugStatistics)
 
 	// 计算器管理接口

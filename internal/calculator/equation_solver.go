@@ -36,14 +36,14 @@ type EquationParams struct {
 
 // EquationResult 方程求解结果
 type EquationResult struct {
-	Solution      interface{} `json:"solution"`       // 解
-	Iterations    int         `json:"iterations"`     // 迭代次数
-	Converged     bool        `json:"converged"`      // 是否收敛
-	Error         float64     `json:"error"`          // 误差
-	FunctionValue float64     `json:"function_value"` // 函数值
-	Jacobian      [][]float64 `json:"jacobian"`       // 雅可比矩阵（线性方程组）
-	TimePoints    []float64   `json:"time_points"`    // 时间点（微分方程）
-	SolutionPath  []float64   `json:"solution_path"`  // 解路径（微分方程）
+	Solution      interface{} `json:"solution"`                  // 解
+	Iterations    int         `json:"iterations"`                // 迭代次数
+	Converged     bool        `json:"converged"`                 // 是否收敛
+	Error         float64     `json:"error"`                     // 误差
+	FunctionValue float64     `json:"function_value"`            // 函数值
+	Jacobian      [][]float64 `json:"jacobian,omitempty"`        // 雅可比矩阵（线性方程组）
+	TimePoints    []float64   `json:"time_points,omitempty"`     // 时间点（微分方程）
+	SolutionPath  []float64   `json:"solution_path,omitempty"`   // 解路径（微分方程）
 }
 
 // Calculate 执行方程求解

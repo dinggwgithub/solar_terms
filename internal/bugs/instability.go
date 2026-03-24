@@ -199,13 +199,4 @@ func (b *InstabilityBug) GetBugCharacteristics() map[string]string {
 	}
 }
 
-// GetFixSuggestions 返回修复建议
-func (b *InstabilityBug) GetFixSuggestions() []string {
-	return []string{
-		"固定随机数种子",
-		"增加迭代次数确保收敛",
-		"避免使用全局可变状态",
-		"添加结果缓存机制",
-		"实现确定性算法",
-	}
-}
+

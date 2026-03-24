@@ -85,41 +85,7 @@ func (m *BugManager) GetBugInfo(bugType BugType) (map[string]string, error) {
 	return info, nil
 }
 
-// GetBugFixSuggestions 获取Bug修复建议
-func (m *BugManager) GetBugFixSuggestions(bugType BugType) ([]string, error) {
-	bug, exists := m.bugs[bugType]
-	if !exists {
-		return nil, fmt.Errorf("Bug类型不存在: %s", bugType.String())
-	}
-	
-	var suggestions []string
-	
-	// 获取特定Bug的修复建议
-	if instabilityBug, ok := bug.(*InstabilityBug); ok {
-		suggestions = instabilityBug.GetFixSuggestions()
-	}
-	
-	if constraintBug, ok := bug.(*ConstraintBug); ok {
-		suggestions = constraintBug.GetFixSuggestions()
-	}
-	
-	if precisionBug, ok := bug.(*PrecisionBug); ok {
-		suggestions = precisionBug.GetFixSuggestions()
-	}
-	
-	// 添加通用修复建议
-	generalSuggestions := []string{
-		"添加单元测试覆盖边界情况",
-		"实现输入参数验证",
-		"添加错误处理和日志记录",
-		"进行代码审查和重构",
-		"参考权威算法实现",
-	}
-	
-	suggestions = append(suggestions, generalSuggestions...)
-	
-	return suggestions, nil
-}
+
 
 // ValidateBugApplication 验证Bug应用结果
 func (m *BugManager) ValidateBugApplication(result interface{}, bugType BugType, calculationType string) (bool, []string) {

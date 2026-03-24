@@ -144,16 +144,7 @@ func (b *PrecisionBug) GetBugCharacteristics() map[string]string {
 	}
 }
 
-// GetFixSuggestions 返回修复建议
-func (b *PrecisionBug) GetFixSuggestions() []string {
-	return []string{
-		"使用更高精度的浮点类型（float64）",
-		"增加迭代次数确保收敛精度",
-		"实现高精度数学库",
-		"使用有理数或定点数表示",
-		"优化数值算法减少累积误差",
-	}
-}
+
 
 // CalculatePrecisionError 计算精度误差（用于评估）
 func (b *PrecisionBug) CalculatePrecisionError(actual, expected interface{}, calculationType string) (float64, error) {
