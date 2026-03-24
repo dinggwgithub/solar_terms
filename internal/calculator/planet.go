@@ -59,7 +59,7 @@ func (pt PlanetType) String() string {
 // PlanetParams 行星计算参数
 type PlanetParams struct {
 	Planet    string  `json:"planet"`    // 行星名称
-	JD        float64 `json:"jd"`       // 儒略日
+	JD        float64 `json:"jd"`        // 儒略日
 	Longitude float64 `json:"longitude"` // 观测者经度（度）
 	Latitude  float64 `json:"latitude"`  // 观测者纬度（度）
 }
@@ -68,10 +68,10 @@ type PlanetParams struct {
 type PlanetPosition struct {
 	RightAscension float64 `json:"right_ascension"` // 赤经（小时）
 	Declination    float64 `json:"declination"`     // 赤纬（度）
-	Distance       float64 `json:"distance"`       // 距离（天文单位）
-	Magnitude      float64 `json:"magnitude"`      // 星等
-	Phase          float64 `json:"phase"`          // 相位（0-1）
-	Elongation     float64 `json:"elongation"`     // 距角（度）
+	Distance       float64 `json:"distance"`        // 距离（天文单位）
+	Magnitude      float64 `json:"magnitude"`       // 星等
+	Phase          float64 `json:"phase"`           // 相位（0-1）
+	Elongation     float64 `json:"elongation"`      // 距角（度）
 }
 
 // Calculate 执行行星位置计算
@@ -116,16 +116,31 @@ func (c *PlanetCalculator) parseParams(params interface{}) (*PlanetParams, error
 		return nil, fmt.Errorf("参数必须是map类型")
 	}
 
-	// 提取行星名称
-	planet, ok := paramsMap["planet"].(string)
-	if !ok {
-		return nil, fmt.Errorf("planet参数必须为字符串")
+	// 提取行星名称（支持 planet 和 planet_name 两种字段名）
+	planet := ""
+	if p, ok := paramsMap["planet"].(string); ok {
+		planet = p
+	} else if p, ok := paramsMap["planet_name"].(string); ok {
+		planet = p
+	} else {
+		return nil, fmt.Errorf("planet或planet_name参数必须为字符串")
 	}
 
-	// 提取儒略日
-	jd, ok := paramsMap["jd"].(float64)
-	if !ok {
-		return nil, fmt.Errorf("jd参数必须为数字")
+	// 提取儒略日（支持直接传入jd或通过year/month/day计算）
+	var jd float64
+	if jdValue, ok := paramsMap["jd"].(float64); ok {
+		jd = jdValue
+	} else {
+		// 尝试从year/month/day计算儒略日
+		year, yOk := paramsMap["year"].(float64)
+		month, mOk := paramsMap["month"].(float64)
+		day, dOk := paramsMap["day"].(float64)
+
+		if yOk && mOk && dOk {
+			jd = c.dateToJulianDay(int(year), int(month), int(day))
+		} else {
+			return nil, fmt.Errorf("需要提供jd参数或year/month/day参数")
+		}
 	}
 
 	// 提取经度（可选）
@@ -150,6 +165,27 @@ func (c *PlanetCalculator) parseParams(params interface{}) (*PlanetParams, error
 		Longitude: longitude,
 		Latitude:  latitude,
 	}, nil
+}
+
+// dateToJulianDay 将年月日转换为儒略日（简化实现）
+func (c *PlanetCalculator) dateToJulianDay(year, month, day int) float64 {
+	// 简化的儒略日计算（基于公历1900-2100年范围）
+	if month <= 2 {
+		year--
+		month += 12
+	}
+
+	// 计算儒略日
+	jd := 365.25*float64(year) + 30.6001*float64(month+1) + float64(day) + 1720994.5
+
+	// 修正格里高利历（1582年10月15日之后）
+	if year > 1582 || (year == 1582 && month > 10) || (year == 1582 && month == 10 && day >= 15) {
+		a := float64(year / 100)
+		b := 2.0 - a + float64(int(a/4))
+		jd += b
+	}
+
+	return jd
 }
 
 // validateParams 验证参数
@@ -207,7 +243,7 @@ func (c *PlanetCalculator) calculatePlanetPosition(params *PlanetParams) (*Plane
 
 	// 简化的行星位置计算
 	// 实际应该基于完整的VSOP87理论
-	
+
 	// 计算轨道参数
 	orbitalElements := c.calculateOrbitalElements(planetType, params.JD)
 
@@ -232,7 +268,7 @@ func (c *PlanetCalculator) calculatePlanetPosition(params *PlanetParams) (*Plane
 type OrbitalElements struct {
 	MeanLongitude float64 // 平黄经（度）
 	SemimajorAxis float64 // 半长轴（天文单位）
-	Eccentricity   float64 // 偏心率
+	Eccentricity  float64 // 偏心率
 	Inclination   float64 // 轨道倾角（度）
 	LongitudePeri float64 // 近日点经度（度）
 	Phase         float64 // 相位（0-1）
@@ -317,7 +353,7 @@ func (c *PlanetCalculator) calculateEquatorialCoordinates(elements *OrbitalEleme
 
 	// 计算黄道坐标
 	lambda := elements.MeanLongitude // 简化：使用平黄经
-	beta := elements.Inclination      // 简化：使用轨道倾角
+	beta := elements.Inclination     // 简化：使用轨道倾角
 
 	// 黄道坐标转赤道坐标（简化）
 	epsilon := 23.4392911 // 黄赤交角
@@ -328,7 +364,7 @@ func (c *PlanetCalculator) calculateEquatorialCoordinates(elements *OrbitalEleme
 		math.Cos(lambda*math.Pi/180),
 	)
 	delta := math.Asin(
-		math.Sin(beta*math.Pi/180)*math.Cos(epsilon*math.Pi/180)+
+		math.Sin(beta*math.Pi/180)*math.Cos(epsilon*math.Pi/180) +
 			math.Cos(beta*math.Pi/180)*math.Sin(epsilon*math.Pi/180)*math.Sin(lambda*math.Pi/180),
 	)
 
@@ -451,8 +487,8 @@ func (c *PlanetCalculator) GetPlanetInfo(planetType PlanetType) map[string]inter
 
 	switch planetType {
 	case PlanetTypeMercury:
-		info["radius"] = 2439.7 // 公里
-		info["mass"] = 3.301e23 // 千克
+		info["radius"] = 2439.7        // 公里
+		info["mass"] = 3.301e23        // 千克
 		info["orbital_period"] = 87.97 // 天
 
 	case PlanetTypeVenus:

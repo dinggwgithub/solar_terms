@@ -143,7 +143,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "solar_term",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "term_index": 2
     }
   }'
@@ -157,7 +157,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs" \
     "calculation": "solar_term",
     "bug_type": "instability",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "term_index": 2
     }
   }'
@@ -178,7 +178,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "solar_term",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "term_index": 3
     }
   }'
@@ -190,7 +190,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "solar_term",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "term_name": "春分"
     }
   }'
@@ -214,7 +214,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
   -d '{
     "calculation": "ganzhi",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 2,
       "day": 4,
       "hour": 10
@@ -230,9 +230,9 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "astronomy",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 3,
-      "day": 20
+      "day": 23
     }
   }'
 ```
@@ -261,9 +261,9 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
   -d '{
     "calculation": "lunar",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 3,
-      "day": 20
+      "day": 23
     }
   }'
 ```
@@ -276,9 +276,9 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "planet",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 3,
-      "day": 20,
+      "day": 23,
       "planet_name": "mars"
     }
   }'
@@ -292,9 +292,9 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
   -d '{
     "calculation": "star",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 3,
-      "day": 20,
+      "day": 23,
       "star_name": "big_dipper"
     }
   }'
@@ -308,9 +308,9 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
   -d '{
     "calculation": "sunrise_sunset",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 3,
-      "day": 20,
+      "day": 23,
       "longitude": 116.4,
       "latitude": 39.9
     }
@@ -325,9 +325,9 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "moon_phase",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "month": 3,
-      "day": 20
+      "day": 23
     }
   }'
 ```
@@ -423,7 +423,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
       "equation": "dy/dt = -y",
       "initial_value": 1.0,
       "time_step": 0.1,
-      "time_range": 10.0,
+      "time_range": 1.0,
       "method": "euler"
     }
   }'
@@ -437,7 +437,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
       "equation": "dy/dt = sin(t) - y",
       "initial_value": 0.0,
       "time_step": 0.05,
-      "time_range": 5.0,
+      "time_range": 1.0,
       "method": "rk4"
     }
   }'
@@ -452,7 +452,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
       "initial_value": 1.0,
       "initial_deriv": 0.0,
       "time_step": 0.1,
-      "time_range": 10.0,
+      "time_range": 1.0,
       "method": "adams"
     }
   }'
@@ -645,7 +645,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=none" \
   -d '{
     "calculation": "solar_term",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "term_name": "春分"
     }
   }'
@@ -659,7 +659,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
   -d '{
     "calculation": "solar_term",
     "params": {
-      "year": 2024,
+      "year": 2026,
       "term_name": "春分"
     }
   }'

@@ -492,6 +492,94 @@ func (m *CalculatorManager) addConstraintViolationToResultWithConfig(result inte
 			TimePoints:    m.addConstraintViolationToResultWithConfig(v.TimePoints, config).([]float64),
 			SolutionPath:  m.addConstraintViolationToResultWithConfig(v.SolutionPath, config).([]float64),
 		}
+	case *PlanetPosition:
+		// 专门处理行星位置计算结果
+		return &PlanetPosition{
+			RightAscension: config.ApplyConstraint(v.RightAscension),
+			Declination:    config.ApplyConstraint(v.Declination),
+			Distance:       config.ApplyConstraint(v.Distance),
+			Magnitude:      config.ApplyConstraint(v.Magnitude),
+			Phase:          config.ApplyConstraint(v.Phase),
+			Elongation:     config.ApplyConstraint(v.Elongation),
+		}
+	case *StarResult:
+		// 专门处理星曜计算结果
+		return &StarResult{
+			LunarDate:        v.LunarDate,      // 字符串字段保持不变
+			DayGanZhi:        v.DayGanZhi,      // 字符串字段保持不变
+			Constellation:    v.Constellation,  // 字符串字段保持不变
+			StarPosition:     v.StarPosition,   // 字符串字段保持不变
+			Auspicious:       v.Auspicious,     // 布尔字段保持不变
+			AuspiciousInfo:   v.AuspiciousInfo, // 字符串数组保持不变
+			DayScore:         config.ApplyConstraint(v.DayScore),
+			ConstellationIdx: int(config.ApplyConstraint(float64(v.ConstellationIdx))),
+			AuspiciousLevel:  config.ApplyConstraint(v.AuspiciousLevel),
+			JulianDay:        config.ApplyConstraint(v.JulianDay),
+			TimeCoordinate:   config.ApplyConstraint(v.TimeCoordinate),
+		}
+	case *SymbolicResult:
+		// 专门处理符号计算结果
+		return &SymbolicResult{
+			OriginalExpression:   v.OriginalExpression, // 字符串保持不变
+			ResultExpression:     v.ResultExpression,   // 字符串保持不变
+			ParsedTree:           v.ParsedTree,         // 保持不变
+			Derivative:           v.Derivative,         // 字符串保持不变
+			Simplified:           v.Simplified,         // 字符串保持不变
+			Variables:            v.Variables,          // map保持不变
+			OperationType:        v.OperationType,      // 字符串保持不变
+			NumericValue:         config.ApplyConstraint(v.NumericValue),
+			ExpressionComplexity: config.ApplyConstraint(v.ExpressionComplexity),
+			VariableCount:        int(config.ApplyConstraint(float64(v.VariableCount))),
+			TermCount:            config.ApplyConstraint(v.TermCount),
+			TreeDepth:            config.ApplyConstraint(v.TreeDepth),
+			EvaluationScore:      config.ApplyConstraint(v.EvaluationScore),
+		}
+	case *MoonPhaseResult:
+		// 专门处理月相计算结果
+		return &MoonPhaseResult{
+			Date:          v.Date,          // 字符串保持不变
+			MoonPhase:     v.MoonPhase,     // 字符串保持不变
+			NextPhase:     v.NextPhase,     // 字符串保持不变
+			NextPhaseTime: v.NextPhaseTime, // 字符串保持不变
+			PhaseAngle:    config.ApplyConstraint(v.PhaseAngle),
+			Illumination:  config.ApplyConstraint(v.Illumination),
+			Age:           config.ApplyConstraint(v.Age),
+			Distance:      config.ApplyConstraint(v.Distance),
+			Longitude:     config.ApplyConstraint(v.Longitude),
+			Latitude:      config.ApplyConstraint(v.Latitude),
+		}
+	case *SunriseSunsetResult:
+		// 专门处理日出日落计算结果
+		return &SunriseSunsetResult{
+			Date:      v.Date,      // 字符串保持不变
+			Sunrise:   v.Sunrise,   // 字符串保持不变
+			Sunset:    v.Sunset,    // 字符串保持不变
+			SolarNoon: v.SolarNoon, // 字符串保持不变
+			DayLength: config.ApplyConstraint(v.DayLength),
+			CivilTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.CivilTwilight),
+			NauticalTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.NauticalTwilight),
+			AstronomicalTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.AstronomicalTwilight),
+		}
+	case *ODEResult:
+		// 专门处理ODE求解器结果
+		return &ODEResult{
+			Solution:       config.ApplyConstraint(v.Solution),
+			TimePoints:     m.addConstraintViolationToResultWithConfig(v.TimePoints, config).([]float64),
+			SolutionPath:   m.addConstraintViolationToResultWithConfig(v.SolutionPath, config).([]float64),
+			DerivativePath: m.addConstraintViolationToResultWithConfig(v.DerivativePath, config).([]float64),
+			MethodUsed:     v.MethodUsed, // 字符串保持不变
+			Stability:      v.Stability,  // 字符串保持不变
+			ErrorEstimate:  config.ApplyConstraint(v.ErrorEstimate),
+		}
 	default:
 		if m, ok := result.(map[string]float64); ok {
 			newMap := make(map[string]float64)
@@ -540,6 +628,94 @@ func (m *CalculatorManager) addPrecisionLossToResultWithConfig(result interface{
 			Jacobian:      v.Jacobian,
 			TimePoints:    m.addPrecisionLossToResultWithConfig(v.TimePoints, config).([]float64),
 			SolutionPath:  m.addPrecisionLossToResultWithConfig(v.SolutionPath, config).([]float64),
+		}
+	case *PlanetPosition:
+		// 专门处理行星位置计算结果
+		return &PlanetPosition{
+			RightAscension: config.ApplyPrecision(v.RightAscension),
+			Declination:    config.ApplyPrecision(v.Declination),
+			Distance:       config.ApplyPrecision(v.Distance),
+			Magnitude:      config.ApplyPrecision(v.Magnitude),
+			Phase:          config.ApplyPrecision(v.Phase),
+			Elongation:     config.ApplyPrecision(v.Elongation),
+		}
+	case *StarResult:
+		// 专门处理星曜计算结果
+		return &StarResult{
+			LunarDate:        v.LunarDate,      // 字符串字段保持不变
+			DayGanZhi:        v.DayGanZhi,      // 字符串字段保持不变
+			Constellation:    v.Constellation,  // 字符串字段保持不变
+			StarPosition:     v.StarPosition,   // 字符串字段保持不变
+			Auspicious:       v.Auspicious,     // 布尔字段保持不变
+			AuspiciousInfo:   v.AuspiciousInfo, // 字符串数组保持不变
+			DayScore:         config.ApplyPrecision(v.DayScore),
+			ConstellationIdx: int(config.ApplyPrecision(float64(v.ConstellationIdx))),
+			AuspiciousLevel:  config.ApplyPrecision(v.AuspiciousLevel),
+			JulianDay:        config.ApplyPrecision(v.JulianDay),
+			TimeCoordinate:   config.ApplyPrecision(v.TimeCoordinate),
+		}
+	case *SymbolicResult:
+		// 专门处理符号计算结果
+		return &SymbolicResult{
+			OriginalExpression:   v.OriginalExpression, // 字符串保持不变
+			ResultExpression:     v.ResultExpression,   // 字符串保持不变
+			ParsedTree:           v.ParsedTree,         // 保持不变
+			Derivative:           v.Derivative,         // 字符串保持不变
+			Simplified:           v.Simplified,         // 字符串保持不变
+			Variables:            v.Variables,          // map保持不变
+			OperationType:        v.OperationType,      // 字符串保持不变
+			NumericValue:         config.ApplyPrecision(v.NumericValue),
+			ExpressionComplexity: config.ApplyPrecision(v.ExpressionComplexity),
+			VariableCount:        int(config.ApplyPrecision(float64(v.VariableCount))),
+			TermCount:            config.ApplyPrecision(v.TermCount),
+			TreeDepth:            config.ApplyPrecision(v.TreeDepth),
+			EvaluationScore:      config.ApplyPrecision(v.EvaluationScore),
+		}
+	case *MoonPhaseResult:
+		// 专门处理月相计算结果
+		return &MoonPhaseResult{
+			Date:          v.Date,          // 字符串保持不变
+			MoonPhase:     v.MoonPhase,     // 字符串保持不变
+			NextPhase:     v.NextPhase,     // 字符串保持不变
+			NextPhaseTime: v.NextPhaseTime, // 字符串保持不变
+			PhaseAngle:    config.ApplyPrecision(v.PhaseAngle),
+			Illumination:  config.ApplyPrecision(v.Illumination),
+			Age:           config.ApplyPrecision(v.Age),
+			Distance:      config.ApplyPrecision(v.Distance),
+			Longitude:     config.ApplyPrecision(v.Longitude),
+			Latitude:      config.ApplyPrecision(v.Latitude),
+		}
+	case *SunriseSunsetResult:
+		// 专门处理日出日落计算结果
+		return &SunriseSunsetResult{
+			Date:      v.Date,      // 字符串保持不变
+			Sunrise:   v.Sunrise,   // 字符串保持不变
+			Sunset:    v.Sunset,    // 字符串保持不变
+			SolarNoon: v.SolarNoon, // 字符串保持不变
+			DayLength: config.ApplyPrecision(v.DayLength),
+			CivilTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.CivilTwilight),
+			NauticalTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.NauticalTwilight),
+			AstronomicalTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.AstronomicalTwilight),
+		}
+	case *ODEResult:
+		// 专门处理ODE求解器结果
+		return &ODEResult{
+			Solution:       config.ApplyPrecision(v.Solution),
+			TimePoints:     m.addPrecisionLossToResultWithConfig(v.TimePoints, config).([]float64),
+			SolutionPath:   m.addPrecisionLossToResultWithConfig(v.SolutionPath, config).([]float64),
+			DerivativePath: m.addPrecisionLossToResultWithConfig(v.DerivativePath, config).([]float64),
+			MethodUsed:     v.MethodUsed, // 字符串保持不变
+			Stability:      v.Stability,  // 字符串保持不变
+			ErrorEstimate:  config.ApplyPrecision(v.ErrorEstimate),
 		}
 	default:
 		if m, ok := result.(map[string]float64); ok {
@@ -595,6 +771,94 @@ func (m *CalculatorManager) addInstabilityToResultWithConfig(result interface{},
 			Jacobian:      v.Jacobian,
 			TimePoints:    m.addInstabilityToResultWithConfig(v.TimePoints, config).([]float64),
 			SolutionPath:  m.addInstabilityToResultWithConfig(v.SolutionPath, config).([]float64),
+		}
+	case *PlanetPosition:
+		// 专门处理行星位置计算结果
+		return &PlanetPosition{
+			RightAscension: config.ApplyInstability(v.RightAscension),
+			Declination:    config.ApplyInstability(v.Declination),
+			Distance:       config.ApplyInstability(v.Distance),
+			Magnitude:      config.ApplyInstability(v.Magnitude),
+			Phase:          config.ApplyInstability(v.Phase),
+			Elongation:     config.ApplyInstability(v.Elongation),
+		}
+	case *StarResult:
+		// 专门处理星曜计算结果
+		return &StarResult{
+			LunarDate:        v.LunarDate,      // 字符串字段保持不变
+			DayGanZhi:        v.DayGanZhi,      // 字符串字段保持不变
+			Constellation:    v.Constellation,  // 字符串字段保持不变
+			StarPosition:     v.StarPosition,   // 字符串字段保持不变
+			Auspicious:       v.Auspicious,     // 布尔字段保持不变
+			AuspiciousInfo:   v.AuspiciousInfo, // 字符串数组保持不变
+			DayScore:         config.ApplyInstability(v.DayScore),
+			ConstellationIdx: int(config.ApplyInstability(float64(v.ConstellationIdx))),
+			AuspiciousLevel:  config.ApplyInstability(v.AuspiciousLevel),
+			JulianDay:        config.ApplyInstability(v.JulianDay),
+			TimeCoordinate:   config.ApplyInstability(v.TimeCoordinate),
+		}
+	case *SymbolicResult:
+		// 专门处理符号计算结果
+		return &SymbolicResult{
+			OriginalExpression:   v.OriginalExpression, // 字符串保持不变
+			ResultExpression:     v.ResultExpression,   // 字符串保持不变
+			ParsedTree:           v.ParsedTree,         // 保持不变
+			Derivative:           v.Derivative,         // 字符串保持不变
+			Simplified:           v.Simplified,         // 字符串保持不变
+			Variables:            v.Variables,          // map保持不变
+			OperationType:        v.OperationType,      // 字符串保持不变
+			NumericValue:         config.ApplyInstability(v.NumericValue),
+			ExpressionComplexity: config.ApplyInstability(v.ExpressionComplexity),
+			VariableCount:        int(config.ApplyInstability(float64(v.VariableCount))),
+			TermCount:            config.ApplyInstability(v.TermCount),
+			TreeDepth:            config.ApplyInstability(v.TreeDepth),
+			EvaluationScore:      config.ApplyInstability(v.EvaluationScore),
+		}
+	case *MoonPhaseResult:
+		// 专门处理月相计算结果
+		return &MoonPhaseResult{
+			Date:          v.Date,          // 字符串保持不变
+			MoonPhase:     v.MoonPhase,     // 字符串保持不变
+			NextPhase:     v.NextPhase,     // 字符串保持不变
+			NextPhaseTime: v.NextPhaseTime, // 字符串保持不变
+			PhaseAngle:    config.ApplyInstability(v.PhaseAngle),
+			Illumination:  config.ApplyInstability(v.Illumination),
+			Age:           config.ApplyInstability(v.Age),
+			Distance:      config.ApplyInstability(v.Distance),
+			Longitude:     config.ApplyInstability(v.Longitude),
+			Latitude:      config.ApplyInstability(v.Latitude),
+		}
+	case *SunriseSunsetResult:
+		// 专门处理日出日落计算结果
+		return &SunriseSunsetResult{
+			Date:      v.Date,      // 字符串保持不变
+			Sunrise:   v.Sunrise,   // 字符串保持不变
+			Sunset:    v.Sunset,    // 字符串保持不变
+			SolarNoon: v.SolarNoon, // 字符串保持不变
+			DayLength: config.ApplyInstability(v.DayLength),
+			CivilTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.CivilTwilight),
+			NauticalTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.NauticalTwilight),
+			AstronomicalTwilight: struct {
+				Morning string `json:"morning"`
+				Evening string `json:"evening"`
+			}(v.AstronomicalTwilight),
+		}
+	case *ODEResult:
+		// 专门处理ODE求解器结果
+		return &ODEResult{
+			Solution:       config.ApplyInstability(v.Solution),
+			TimePoints:     m.addInstabilityToResultWithConfig(v.TimePoints, config).([]float64),
+			SolutionPath:   m.addInstabilityToResultWithConfig(v.SolutionPath, config).([]float64),
+			DerivativePath: m.addInstabilityToResultWithConfig(v.DerivativePath, config).([]float64),
+			MethodUsed:     v.MethodUsed, // 字符串保持不变
+			Stability:      v.Stability,  // 字符串保持不变
+			ErrorEstimate:  config.ApplyInstability(v.ErrorEstimate),
 		}
 	default:
 		if m, ok := result.(map[string]float64); ok {
