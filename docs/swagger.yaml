@@ -135,6 +135,58 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比原接口与修复后接口的结果差异
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 日出日落时间计算对比
+      tags:
+      - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 使用修复后的算法计算日出日落时间
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 日出日落时间计算（修复版）
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
