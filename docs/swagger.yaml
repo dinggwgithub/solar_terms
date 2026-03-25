@@ -1,5 +1,25 @@
 basePath: /
 definitions:
+  api.CalculationCompareResponse:
+    properties:
+      analysis:
+        $ref: '#/definitions/api.ComparisonAnalysis'
+      differences:
+        additionalProperties: true
+        type: object
+      fixed_result:
+        additionalProperties: true
+        type: object
+      original_result:
+        additionalProperties: true
+        type: object
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
   api.CalculationResponse:
     properties:
       calculation:
@@ -22,6 +42,23 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  api.ComparisonAnalysis:
+    properties:
+      is_within_tolerance:
+        type: boolean
+      issues_found:
+        items:
+          type: string
+        type: array
+      parameter_status:
+        additionalProperties:
+          type: string
+        type: object
+      summary:
+        type: string
+      tolerance:
+        type: number
     type: object
   api.ErrorResponse:
     properties:
@@ -133,6 +170,66 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: 执行科学计算
+      tags:
+      - 科学计算
+  /api/calculate-compare:
+    post:
+      consumes:
+      - application/json
+      description: 同时调用原始接口和修复接口，进行A/B测试对比分析
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationCompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 计算结果对比
+      tags:
+      - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行修复后的各种类型的科学计算，特别是天文计算的修复版本
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复后的科学计算
       tags:
       - 科学计算
   /api/calculator-info:
