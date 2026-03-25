@@ -122,6 +122,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/solver/compare": {
+            "post": {
+                "description": "对比修复前后的求解结果，输出结构化差异报告",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "方程求解"
+                ],
+                "summary": "方程求解器对比",
+                "parameters": [
+                    {
+                        "description": "对比请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/v2": {
+            "post": {
+                "description": "使用修正后的牛顿迭代法求解非线性方程，包含详细迭代信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "方程求解"
+                ],
+                "summary": "方程求解器V2（修复版）",
+                "parameters": [
+                    {
+                        "description": "求解请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SolverV2Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system-info": {
             "get": {
                 "description": "获取系统支持的完整信息",
@@ -182,6 +262,19 @@ const docTemplate = `{
                 }
             }
         },
+        "api.CompareRequest": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string",
+                    "example": "equation_solver"
+                },
+                "params": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
         "api.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -214,6 +307,19 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "1.0.0"
+                }
+            }
+        },
+        "api.SolverV2Request": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string",
+                    "example": "equation_solver"
+                },
+                "params": {
+                    "type": "object",
+                    "additionalProperties": true
                 }
             }
         },

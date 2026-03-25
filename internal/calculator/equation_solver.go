@@ -45,6 +45,28 @@ type EquationResult struct {
 	SolutionPath  []float64   `json:"solution_path,omitempty"` // 解路径（微分方程）
 }
 
+// IterationDetail 迭代详情
+type IterationDetail struct {
+	Iteration     int     `json:"iteration"`
+	X             float64 `json:"x"`
+	FunctionValue float64 `json:"function_value"`
+	Derivative    float64 `json:"derivative"`
+	DeltaX        float64 `json:"delta_x"`
+	Residual      float64 `json:"residual"`
+}
+
+// EquationResultV2 方程求解结果V2（包含迭代详情）
+type EquationResultV2 struct {
+	Solution         float64           `json:"solution"`
+	Iterations       int               `json:"iterations"`
+	Converged        bool              `json:"converged"`
+	Error            float64           `json:"error"`
+	FunctionValue    float64           `json:"function_value"`
+	Tolerance        float64           `json:"tolerance"`
+	ConvergenceType  string            `json:"convergence_type"`
+	IterationDetails []IterationDetail `json:"iteration_details"`
+}
+
 // Calculate 执行方程求解
 func (c *EquationSolverCalculator) Calculate(params interface{}) (interface{}, error) {
 	equationParams, err := c.parseParams(params)
@@ -164,26 +186,22 @@ func (c *EquationSolverCalculator) validateParams(params *EquationParams) error 
 	return nil
 }
 
-// solveNonlinearEquation 求解非线性方程（牛顿迭代法）
-func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams) (*EquationResult, error) {
+// SolveNonlinearEquationOld 求解非线性方程（牛顿迭代法）- 旧版，用于对比
+func (c *EquationSolverCalculator) SolveNonlinearEquationOld(params *EquationParams) (*EquationResult, error) {
 	x := params.InitialGuess
 	iterations := 0
 	converged := false
 
 	for iterations < params.MaxIterations {
-		// 计算函数值和导数值
 		fx := c.evaluateFunction(params.Equation, x)
-		fpx := c.evaluateDerivative(params.Equation, x)
+		fpx := c.evaluateDerivativeOld(params.Equation, x)
 
-		// 检查导数是否为零
 		if math.Abs(fpx) < 1e-12 {
 			break
 		}
 
-		// 牛顿迭代公式: x_{n+1} = x_n - f(x_n)/f'(x_n)
 		xNew := x - fx/fpx
 
-		// 检查收敛性
 		if math.Abs(xNew-x) < params.Tolerance {
 			converged = true
 			break
@@ -205,6 +223,156 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 		Converged:     converged,
 		Error:         math.Abs(fx),
 		FunctionValue: fx,
+	}, nil
+}
+
+// solveNonlinearEquation 求解非线性方程（牛顿迭代法）
+func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams) (*EquationResult, error) {
+	x := params.InitialGuess
+	iterations := 0
+	converged := false
+	var lastFx float64
+
+	for iterations < params.MaxIterations {
+		fx := c.evaluateFunction(params.Equation, x)
+		fpx := c.evaluateDerivative(params.Equation, x)
+
+		if math.Abs(fpx) < 1e-12 {
+			break
+		}
+
+		xNew := x - fx/fpx
+
+		deltaX := math.Abs(xNew - x)
+		residual := math.Abs(fx)
+
+		if deltaX < params.Tolerance && residual < params.Tolerance {
+			converged = true
+			x = xNew
+			lastFx = c.evaluateFunction(params.Equation, x)
+			iterations++
+			break
+		}
+
+		if deltaX < params.Tolerance*math.Max(1.0, math.Abs(x)) {
+			converged = true
+			x = xNew
+			lastFx = c.evaluateFunction(params.Equation, x)
+			iterations++
+			break
+		}
+
+		x = xNew
+		lastFx = fx
+		iterations++
+	}
+
+	if !converged {
+		lastFx = c.evaluateFunction(params.Equation, x)
+		if math.Abs(lastFx) < params.Tolerance {
+			converged = true
+		}
+	}
+
+	return &EquationResult{
+		Solution:      x,
+		Iterations:    iterations,
+		Converged:     converged,
+		Error:         math.Abs(lastFx),
+		FunctionValue: lastFx,
+	}, nil
+}
+
+// SolveNonlinearEquationV2 求解非线性方程（牛顿迭代法）- V2版本，包含详细迭代信息
+func (c *EquationSolverCalculator) SolveNonlinearEquationV2(params *EquationParams) (*EquationResultV2, error) {
+	x := params.InitialGuess
+	iterations := 0
+	converged := false
+	convergenceType := ""
+	var lastFx, lastFpx float64
+	iterationDetails := make([]IterationDetail, 0)
+
+	for iterations < params.MaxIterations {
+		fx := c.evaluateFunction(params.Equation, x)
+		fpx := c.evaluateDerivative(params.Equation, x)
+
+		if math.Abs(fpx) < 1e-12 {
+			break
+		}
+
+		xNew := x - fx/fpx
+
+		deltaX := math.Abs(xNew - x)
+		residual := math.Abs(fx)
+
+		detail := IterationDetail{
+			Iteration:     iterations + 1,
+			X:             x,
+			FunctionValue: fx,
+			Derivative:    fpx,
+			DeltaX:        deltaX,
+			Residual:      residual,
+		}
+		iterationDetails = append(iterationDetails, detail)
+
+		if deltaX < params.Tolerance && residual < params.Tolerance {
+			converged = true
+			convergenceType = "both"
+			x = xNew
+			lastFx = c.evaluateFunction(params.Equation, x)
+			lastFpx = c.evaluateDerivative(params.Equation, x)
+			iterations++
+			break
+		}
+
+		if deltaX < params.Tolerance*math.Max(1.0, math.Abs(x)) {
+			converged = true
+			convergenceType = "relative"
+			x = xNew
+			lastFx = c.evaluateFunction(params.Equation, x)
+			lastFpx = c.evaluateDerivative(params.Equation, x)
+			iterations++
+			break
+		}
+
+		x = xNew
+		lastFx = fx
+		lastFpx = fpx
+		iterations++
+	}
+
+	if !converged {
+		lastFx = c.evaluateFunction(params.Equation, x)
+		lastFpx = c.evaluateDerivative(params.Equation, x)
+		if math.Abs(lastFx) < params.Tolerance {
+			converged = true
+			convergenceType = "residual"
+		}
+	}
+
+	if converged && convergenceType == "" {
+		convergenceType = "unknown"
+	}
+
+	finalDetail := IterationDetail{
+		Iteration:     iterations,
+		X:             x,
+		FunctionValue: lastFx,
+		Derivative:    lastFpx,
+		DeltaX:        0,
+		Residual:      math.Abs(lastFx),
+	}
+	iterationDetails = append(iterationDetails, finalDetail)
+
+	return &EquationResultV2{
+		Solution:         x,
+		Iterations:       iterations,
+		Converged:        converged,
+		Error:            math.Abs(lastFx),
+		FunctionValue:    lastFx,
+		Tolerance:        params.Tolerance,
+		ConvergenceType:  convergenceType,
+		IterationDetails: iterationDetails,
 	}, nil
 }
 
@@ -309,6 +477,19 @@ func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64
 	}
 
 	// 默认导数
+	return 3*x*x - 2
+}
+
+// evaluateDerivativeOld 计算导数值（旧版，包含错误）
+func (c *EquationSolverCalculator) evaluateDerivativeOld(equation string, x float64) float64 {
+	if strings.Contains(equation, "x^2") {
+		return 2 * x
+	} else if strings.Contains(equation, "sin") {
+		return math.Cos(x)
+	} else if strings.Contains(equation, "exp") {
+		return math.Exp(x)
+	}
+
 	return 3*x*x + 2
 }
 
