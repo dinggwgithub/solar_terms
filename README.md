@@ -120,7 +120,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 1. 节气计算 (solar_term)
 ```bash
-# 计算2024年春分节气
+# 计算2026年春分节气
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -131,20 +131,20 @@ curl -X POST "http://localhost:8080/api/calculate" \
     }
   }'
 
-# 计算2024年所有节气
+# 计算2026年所有节气
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "solar_term",
     "params": {
-      "year": 2024
+      "year": 2026
     }
   }'
 ```
 
 #### 2. 干支计算 (ganzhi)
 ```bash
-# 计算2024年2月4日10时的干支
+# 计算2026年2月4日10时的干支
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -160,7 +160,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 3. 天文计算 (astronomy)
 ```bash
-# 计算2024年3月20日的太阳黄经
+# 计算2026年3月23日的太阳黄经
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -191,7 +191,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 5. 农历转换 (lunar)
 ```bash
-# 将2024年3月20日转换为农历
+# 将2026年3月23日转换为农历
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -206,7 +206,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 6. 行星位置计算 (planet)
 ```bash
-# 计算2024年3月20日火星的位置
+# 计算2026年3月23日火星的位置
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -222,7 +222,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 7. 星曜推算 (star)
 ```bash
-# 推算2024年3月20日北斗七星的位置
+# 推算2026年3月23日北斗七星的位置
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -238,7 +238,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 8. 日出日落时间计算 (sunrise_sunset)
 ```bash
-# 计算北京（116.4°E, 39.9°N）2024年3月20日的日出日落时间
+# 计算北京（116.4°E, 39.9°N）2026年3月23日的日出日落时间
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -255,7 +255,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 
 #### 9. 月相计算 (moon_phase)
 ```bash
-# 计算2024年3月20日的月相
+# 计算2026年3月23日的月相
 curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
@@ -447,12 +447,12 @@ curl -X GET "http://localhost:8080/api/health"
 {
   "success": true,
   "result": {
-    "solar_term_time": "2024-03-20 12:00:00",
+    "solar_term_time": "2026-03-20 12:00:00",
     "sun_longitude": 0.0,
     "julian_date": 2459580.5
   },
   "calculation": "solar_term",
-  "timestamp": "2024-03-24T11:45:00Z"
+  "timestamp": "2026-03-24T11:45:00Z"
 }
 ```
 
