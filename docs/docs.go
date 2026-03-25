@@ -61,6 +61,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-compare": {
+            "post": {
+                "description": "接收相同请求参数，返回原接口与修复后接口的结果差异，便于验证修复效果",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比原版与修复版的计算结果",
+                "parameters": [
+                    {
+                        "description": "计算请求参数（calculation必须为sunrise_sunset）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "使用修复后的天文算法计算日出日落时间，修复了原版的符号处理和时区转换错误",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "修复后的日出日落时间计算",
+                "parameters": [
+                    {
+                        "description": "计算请求参数（calculation必须为sunrise_sunset）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculateFixedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -147,6 +227,33 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.CalculateFixedResponse": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "result": {},
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "api.CalculationResponse": {
             "type": "object",
             "properties": {
@@ -180,6 +287,55 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 }
+            }
+        },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "comparison": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "differences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.DifferenceDetail"
+                    }
+                },
+                "fix_explanation": {
+                    "type": "string"
+                },
+                "original_bug_description": {
+                    "type": "string"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DifferenceDetail": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "fixed": {},
+                "is_critical": {
+                    "type": "boolean"
+                },
+                "original": {}
             }
         },
         "api.ErrorResponse": {
