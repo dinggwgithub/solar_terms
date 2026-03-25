@@ -233,6 +233,11 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 支持接口
 	router.GET("/api/supported-calculations", h.GetSupportedCalculations)
+
+	// 方程求解专用接口
+	solverHandler := NewSolverHandler()
+	router.POST("/api/solver/v2", solverHandler.SolveV2)
+	router.POST("/api/solver/compare", solverHandler.CompareSolvers)
 }
 
 // GetSupportedCalculations 获取支持的计算类型接口

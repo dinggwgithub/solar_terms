@@ -116,6 +116,86 @@
                 }
             }
         },
+        "/api/solver/compare": {
+            "post": {
+                "description": "同时运行原始版本和修复版本，输出结构化差异报告，支持两种参数格式",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "方程求解"
+                ],
+                "summary": "对比V1和V2版本的求解器",
+                "parameters": [
+                    {
+                        "description": "求解请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SolverV2Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SolverCompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/v2": {
+            "post": {
+                "description": "使用修复后的收敛判定逻辑求解方程，支持两种参数格式：直接格式或嵌套params格式",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "方程求解"
+                ],
+                "summary": "修复版方程求解",
+                "parameters": [
+                    {
+                        "description": "求解请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SolverV2Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SolverV2Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system-info": {
             "get": {
                 "description": "获取系统支持的完整信息",
@@ -211,6 +291,134 @@
                 }
             }
         },
+        "api.SolverCompareResponse": {
+            "type": "object",
+            "properties": {
+                "diff_report": {
+                    "description": "差异报告",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api.SolverDiffReport"
+                        }
+                    ]
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "v1_result": {
+                    "description": "V1版本结果",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/calculator.EquationResult"
+                        }
+                    ]
+                },
+                "v2_result": {
+                    "description": "V2版本结果",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/calculator.EquationResult"
+                        }
+                    ]
+                }
+            }
+        },
+        "api.SolverDiffReport": {
+            "type": "object",
+            "properties": {
+                "analysis": {
+                    "description": "差异分析",
+                    "type": "string"
+                },
+                "converged_changed": {
+                    "description": "收敛状态是否改变",
+                    "type": "boolean"
+                },
+                "error_diff": {
+                    "description": "误差差异",
+                    "type": "number"
+                },
+                "iterations_diff": {
+                    "description": "迭代次数差异",
+                    "type": "integer"
+                },
+                "residual_diff": {
+                    "description": "残差差异",
+                    "type": "number"
+                },
+                "solution_diff": {
+                    "description": "解的差异",
+                    "type": "number"
+                }
+            }
+        },
+        "api.SolverV2Request": {
+            "type": "object",
+            "properties": {
+                "coefficients": {
+                    "description": "系数（线性方程组）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "equation": {
+                    "description": "方程表达式",
+                    "type": "string"
+                },
+                "equation_type": {
+                    "description": "方程类型：nonlinear, linear, ode",
+                    "type": "string"
+                },
+                "initial_guess": {
+                    "description": "初始猜测值（非线性方程）",
+                    "type": "number"
+                },
+                "max_iterations": {
+                    "description": "最大迭代次数",
+                    "type": "integer"
+                },
+                "params": {
+                    "description": "兼容旧格式：嵌套参数"
+                },
+                "time_range": {
+                    "description": "时间范围（微分方程）",
+                    "type": "number"
+                },
+                "time_step": {
+                    "description": "时间步长（微分方程）",
+                    "type": "number"
+                },
+                "tolerance": {
+                    "description": "容差",
+                    "type": "number"
+                }
+            }
+        },
+        "api.SolverV2Response": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "description": "使用的算法版本",
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/calculator.EquationResult"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
         "api.SystemInfoResponse": {
             "type": "object",
             "properties": {
@@ -225,6 +433,55 @@
                 },
                 "version": {
                     "type": "string"
+                }
+            }
+        },
+        "calculator.EquationResult": {
+            "type": "object",
+            "properties": {
+                "converged": {
+                    "description": "是否收敛",
+                    "type": "boolean"
+                },
+                "error": {
+                    "description": "误差",
+                    "type": "number"
+                },
+                "function_value": {
+                    "description": "函数值",
+                    "type": "number"
+                },
+                "iterations": {
+                    "description": "迭代次数",
+                    "type": "integer"
+                },
+                "jacobian": {
+                    "description": "雅可比矩阵（线性方程组）",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number",
+                            "format": "float64"
+                        }
+                    }
+                },
+                "solution": {
+                    "description": "解"
+                },
+                "solution_path": {
+                    "description": "解路径（微分方程）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "time_points": {
+                    "description": "时间点（微分方程）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
                 }
             }
         },

@@ -164,8 +164,13 @@ func (c *EquationSolverCalculator) validateParams(params *EquationParams) error 
 	return nil
 }
 
-// solveNonlinearEquation 求解非线性方程（牛顿迭代法）
+// solveNonlinearEquation 求解非线性方程（牛顿迭代法）- 修复版
 func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams) (*EquationResult, error) {
+	return c.solveNonlinearEquationV2(params)
+}
+
+// solveNonlinearEquationV1 原始版本（用于对比）
+func (c *EquationSolverCalculator) solveNonlinearEquationV1(params *EquationParams) (*EquationResult, error) {
 	x := params.InitialGuess
 	iterations := 0
 	converged := false
@@ -195,8 +200,61 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 
 	fx := c.evaluateFunction(params.Equation, x)
 
+	// 原始版本的问题：使用硬编码阈值而非容差参数
 	if iterations >= 3 && math.Abs(fx) < 0.001 {
 		converged = true
+	}
+
+	return &EquationResult{
+		Solution:      x,
+		Iterations:    iterations,
+		Converged:     converged,
+		Error:         math.Abs(fx),
+		FunctionValue: fx,
+	}, nil
+}
+
+// solveNonlinearEquationV2 修复版本（改进的收敛判定）
+func (c *EquationSolverCalculator) solveNonlinearEquationV2(params *EquationParams) (*EquationResult, error) {
+	x := params.InitialGuess
+	iterations := 0
+	converged := false
+	var fx, fpx, xNew float64
+
+	for iterations < params.MaxIterations {
+		// 计算函数值和导数值
+		fx = c.evaluateFunction(params.Equation, x)
+		fpx = c.evaluateDerivativeV2(params.Equation, x)
+
+		// 检查导数是否为零或接近零（避免除以零）
+		if math.Abs(fpx) < 1e-14 {
+			return nil, fmt.Errorf("导数接近零，牛顿法无法继续迭代")
+		}
+
+		// 牛顿迭代公式: x_{n+1} = x_n - f(x_n)/f'(x_n)
+		xNew = x - fx/fpx
+		iterations++
+
+		// 改进的收敛判定：同时检查步长收敛和函数值收敛
+		stepSize := math.Abs(xNew - x)
+		funcResidual := math.Abs(fx)
+
+		// 收敛条件：步长足够小 或 函数值足够接近零
+		if stepSize < params.Tolerance || funcResidual < params.Tolerance {
+			converged = true
+			x = xNew
+			break
+		}
+
+		x = xNew
+	}
+
+	// 最终函数值计算
+	fx = c.evaluateFunction(params.Equation, x)
+
+	// 最终收敛验证：函数值应在容差范围内
+	if math.Abs(fx) > params.Tolerance*10 && iterations >= params.MaxIterations {
+		converged = false
 	}
 
 	return &EquationResult{
@@ -220,11 +278,9 @@ func (c *EquationSolverCalculator) solveLinearSystem(params *EquationParams) (*E
 	// 简单的解计算（演示用）
 	n := len(params.Coefficients)
 	solution := make([]float64, n)
-	sum := 0.0
 
 	for i, coef := range params.Coefficients {
 		solution[i] = 1.0 / coef
-		sum += coef
 	}
 
 	// 构建简化的雅可比矩阵
@@ -292,11 +348,11 @@ func (c *EquationSolverCalculator) evaluateFunction(equation string, x float64) 
 		return math.Exp(x) - 2.0 // f(x) = exp(x) - 2
 	}
 
-	// 默认函数
-	return x*x*x - 2*x - 5 // f(x) = x^3 - 2x - 5
+	// 默认函数: x^3 - 2x - 5 = 0
+	return x*x*x - 2*x - 5
 }
 
-// evaluateDerivative 计算导数值
+// evaluateDerivative 计算导数值（原始版本，有bug）
 func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64) float64 {
 	// 简化的导数求值
 
@@ -308,8 +364,24 @@ func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64
 		return math.Exp(x) // f'(x) = exp(x)
 	}
 
-	// 默认导数
+	// 默认导数（BUG: 应为 3*x*x - 2，而不是 3*x*x + 2）
 	return 3*x*x + 2
+}
+
+// evaluateDerivativeV2 计算导数值（修复版本）
+func (c *EquationSolverCalculator) evaluateDerivativeV2(equation string, x float64) float64 {
+	// 简化的导数求值
+
+	if strings.Contains(equation, "x^2") {
+		return 2 * x // f'(x) = 2x
+	} else if strings.Contains(equation, "sin") {
+		return math.Cos(x) // f'(x) = cos(x)
+	} else if strings.Contains(equation, "exp") {
+		return math.Exp(x) // f'(x) = exp(x)
+	}
+
+	// 默认导数（修复：f(x) = x^3 - 2x - 5 的导数是 f'(x) = 3x^2 - 2）
+	return 3*x*x - 2
 }
 
 // evaluateODEFunction 计算微分方程右端函数
@@ -337,4 +409,19 @@ func (c *EquationSolverCalculator) Validate(params interface{}) error {
 // Description 返回计算器描述
 func (c *EquationSolverCalculator) Description() string {
 	return "方程求解器，支持非线性方程、线性方程组和微分方程求解"
+}
+
+// SolveNonlinearEquationV1 公开方法：原始版本求解（用于对比测试）
+func (c *EquationSolverCalculator) SolveNonlinearEquationV1(params *EquationParams) (*EquationResult, error) {
+	return c.solveNonlinearEquationV1(params)
+}
+
+// SolveNonlinearEquationV2 公开方法：修复版本求解
+func (c *EquationSolverCalculator) SolveNonlinearEquationV2(params *EquationParams) (*EquationResult, error) {
+	return c.solveNonlinearEquationV2(params)
+}
+
+// ParseEquationParams 公开方法：解析方程参数
+func (c *EquationSolverCalculator) ParseEquationParams(params interface{}) (*EquationParams, error) {
+	return c.parseParams(params)
 }
