@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"scientific_calc/internal/calculator"
@@ -219,6 +220,233 @@ func (h *APIHandler) sendError(c *gin.Context, code int, message string) {
 	c.JSON(code, response)
 }
 
+// CalculateFixed 修复后的科学计算接口
+// @Summary 执行修复后的科学计算
+// @Description 执行修复后的日出日落时间计算
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID，用于保持计算参数一致性，不传则自动生成"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 解析计算类型
+	calcType, err := calculator.ParseCalculationType(req.Calculation)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "不支持的计算类型: "+req.Calculation)
+		return
+	}
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 使用修复后的计算器执行计算
+	result, warnings, err := h.calculatorManager.CalculateFixedWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, req.Calculation, sessionID)
+}
+
+// CompareResponse 对比响应
+type CompareResponse struct {
+	Success        bool                   `json:"success"`
+	OriginalResult interface{}            `json:"original_result"`
+	FixedResult    interface{}            `json:"fixed_result"`
+	Differences    map[string]interface{} `json:"differences"`
+	Summary        string                 `json:"summary"`
+	Timestamp      string                 `json:"timestamp"`
+	Calculation    string                 `json:"calculation"`
+	SessionID      string                 `json:"session_id,omitempty"`
+}
+
+// CalculateCompare 结果对比接口
+// @Summary 对比原接口与修复后接口的计算结果
+// @Description 接收相同请求参数，返回原接口与修复后接口的结果差异
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-compare [post]
+func (h *APIHandler) CalculateCompare(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 解析计算类型
+	calcType, err := calculator.ParseCalculationType(req.Calculation)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "不支持的计算类型: "+req.Calculation)
+		return
+	}
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 执行原计算
+	originalResult, _, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "原计算失败: "+err.Error())
+		return
+	}
+
+	// 执行修复后计算
+	fixedResult, _, err := h.calculatorManager.CalculateFixedWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "修复后计算失败: "+err.Error())
+		return
+	}
+
+	// 对比结果差异
+	differences, summary := compareResults(originalResult, fixedResult)
+
+	response := CompareResponse{
+		Success:        true,
+		OriginalResult: originalResult,
+		FixedResult:    fixedResult,
+		Differences:    differences,
+		Summary:        summary,
+		Timestamp:      time.Now().Format(time.RFC3339),
+		Calculation:    req.Calculation,
+		SessionID:      sessionID,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// compareResults 对比两个结果的差异
+func compareResults(original, fixed interface{}) (map[string]interface{}, string) {
+	differences := make(map[string]interface{})
+	summary := ""
+
+	origMap, ok1 := original.(map[string]interface{})
+	fixedMap, ok2 := fixed.(map[string]interface{})
+
+	if !ok1 || !ok2 {
+		// 尝试转换为其他类型
+		origResult, ok1 := original.(*calculator.SunriseSunsetResult)
+		fixedResult, ok2 := fixed.(*calculator.SunriseSunsetResult)
+
+		if ok1 && ok2 {
+			return compareSunriseSunsetResults(origResult, fixedResult)
+		}
+
+		differences["note"] = "结果类型无法直接对比"
+		return differences, "结果结构不同"
+	}
+
+	// 简单的字段级对比
+	for key, origVal := range origMap {
+		if fixedVal, exists := fixedMap[key]; exists {
+			if origVal != fixedVal {
+				differences[key] = map[string]interface{}{
+					"original": origVal,
+					"fixed":    fixedVal,
+				}
+			}
+		} else {
+			differences[key] = map[string]interface{}{
+				"original": origVal,
+				"fixed":    "字段不存在",
+			}
+		}
+	}
+
+	for key, fixedVal := range fixedMap {
+		if _, exists := origMap[key]; !exists {
+			differences[key] = map[string]interface{}{
+				"original": "字段不存在",
+				"fixed":    fixedVal,
+			}
+		}
+	}
+
+	if len(differences) > 0 {
+		summary = fmt.Sprintf("发现 %d 处差异", len(differences))
+	} else {
+		summary = "结果一致，无差异"
+	}
+
+	return differences, summary
+}
+
+// compareSunriseSunsetResults 专门对比日出日落结果
+func compareSunriseSunsetResults(orig, fixed *calculator.SunriseSunsetResult) (map[string]interface{}, string) {
+	differences := make(map[string]interface{})
+	issues := []string{}
+
+	if orig.Sunrise != fixed.Sunrise {
+		differences["sunrise"] = map[string]string{
+			"original": orig.Sunrise,
+			"fixed":    fixed.Sunrise,
+		}
+		issues = append(issues, "日出时间")
+	}
+
+	if orig.Sunset != fixed.Sunset {
+		differences["sunset"] = map[string]string{
+			"original": orig.Sunset,
+			"fixed":    fixed.Sunset,
+		}
+		issues = append(issues, "日落时间")
+	}
+
+	if orig.SolarNoon != fixed.SolarNoon {
+		differences["solar_noon"] = map[string]string{
+			"original": orig.SolarNoon,
+			"fixed":    fixed.SolarNoon,
+		}
+		issues = append(issues, "正午时间")
+	}
+
+	// 检查晨昏蒙影
+	if orig.CivilTwilight.Morning != fixed.CivilTwilight.Morning {
+		differences["civil_twilight.morning"] = map[string]string{
+			"original": orig.CivilTwilight.Morning,
+			"fixed":    fixed.CivilTwilight.Morning,
+		}
+		issues = append(issues, "民用晨光")
+	}
+
+	if orig.CivilTwilight.Evening != fixed.CivilTwilight.Evening {
+		differences["civil_twilight.evening"] = map[string]string{
+			"original": orig.CivilTwilight.Evening,
+			"fixed":    fixed.CivilTwilight.Evening,
+		}
+		issues = append(issues, "民用暮光")
+	}
+
+	summary := ""
+	if len(issues) > 0 {
+		summary = fmt.Sprintf("修复了以下问题：%v", issues)
+	} else {
+		summary = "结果一致，无差异"
+	}
+
+	return differences, summary
+}
+
 // RegisterRoutes 注册API路由
 func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 系统接口
@@ -227,6 +455,8 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+	router.POST("/api/calculate-compare", h.CalculateCompare)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
