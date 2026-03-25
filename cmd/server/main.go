@@ -126,6 +126,18 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 		calculator.CalculationTypeODESolver,
 		calculator.NewODESolverCalculator(),
 	)
+
+	// 注册日出日落时间计算器（修复版）
+	manager.RegisterCalculator(
+		calculator.CalculationTypeSunriseSunsetFixed,
+		calculator.NewSunriseSunsetCalculatorFixed(),
+	)
+
+	// 注册日出日落时间对比计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypeSunriseSunsetCompare,
+		calculator.NewSunriseSunsetCompareCalculator(),
+	)
 }
 
 // printSupportedCalculations 打印支持的计算任务

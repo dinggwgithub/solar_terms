@@ -129,6 +129,70 @@ func (h *APIHandler) Calculate(c *gin.Context) {
 	h.sendSuccess(c, result, warnings, req.Calculation, sessionID)
 }
 
+// CalculateFixed 日出日落计算修复接口
+// @Summary 日出日落时间计算（修复版）
+// @Description 使用修复后的算法计算日出日落时间
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	sessionID := GenerateSessionID()
+
+	result, warnings, err := h.calculatorManager.CalculateWithSession(
+		calculator.CalculationTypeSunriseSunsetFixed,
+		req.GetParams(),
+		sessionID,
+	)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "sunrise_sunset_fixed", sessionID)
+}
+
+// CalculateCompare 日出日落计算对比接口
+// @Summary 日出日落时间计算对比
+// @Description 对比原接口与修复后接口的结果差异
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-compare [post]
+func (h *APIHandler) CalculateCompare(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	sessionID := GenerateSessionID()
+
+	result, warnings, err := h.calculatorManager.CalculateWithSession(
+		calculator.CalculationTypeSunriseSunsetCompare,
+		req.GetParams(),
+		sessionID,
+	)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "sunrise_sunset_compare", sessionID)
+}
+
 // GetCalculatorInfo 获取计算器信息接口
 // @Summary 获取计算器信息
 // @Description 获取指定计算器的详细信息
@@ -227,6 +291,12 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+
+	// 日出日落计算修复接口
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+
+	// 日出日落计算对比接口
+	router.POST("/api/calculate-compare", h.CalculateCompare)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
