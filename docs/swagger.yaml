@@ -47,6 +47,91 @@ definitions:
         example: 1.0.0
         type: string
     type: object
+  api.SolverCompareResponse:
+    properties:
+      diff_report:
+        allOf:
+        - $ref: '#/definitions/api.SolverDiffReport'
+        description: 差异报告
+      success:
+        type: boolean
+      timestamp:
+        type: string
+      v1_result:
+        allOf:
+        - $ref: '#/definitions/calculator.EquationResult'
+        description: V1版本结果
+      v2_result:
+        allOf:
+        - $ref: '#/definitions/calculator.EquationResult'
+        description: V2版本结果
+    type: object
+  api.SolverDiffReport:
+    properties:
+      analysis:
+        description: 差异分析
+        type: string
+      converged_changed:
+        description: 收敛状态是否改变
+        type: boolean
+      error_diff:
+        description: 误差差异
+        type: number
+      iterations_diff:
+        description: 迭代次数差异
+        type: integer
+      residual_diff:
+        description: 残差差异
+        type: number
+      solution_diff:
+        description: 解的差异
+        type: number
+    type: object
+  api.SolverV2Request:
+    properties:
+      coefficients:
+        description: 系数（线性方程组）
+        items:
+          type: number
+        type: array
+      equation:
+        description: 方程表达式
+        type: string
+      equation_type:
+        description: 方程类型：nonlinear, linear, ode
+        type: string
+      initial_guess:
+        description: 初始猜测值（非线性方程）
+        type: number
+      max_iterations:
+        description: 最大迭代次数
+        type: integer
+      params:
+        description: 兼容旧格式：嵌套参数
+      time_range:
+        description: 时间范围（微分方程）
+        type: number
+      time_step:
+        description: 时间步长（微分方程）
+        type: number
+      tolerance:
+        description: 容差
+        type: number
+    type: object
+  api.SolverV2Response:
+    properties:
+      algorithm:
+        description: 使用的算法版本
+        type: string
+      result:
+        $ref: '#/definitions/calculator.EquationResult'
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
   api.SystemInfoResponse:
     properties:
       supported_calculations:
@@ -57,6 +142,41 @@ definitions:
         type: integer
       version:
         type: string
+    type: object
+  calculator.EquationResult:
+    properties:
+      converged:
+        description: 是否收敛
+        type: boolean
+      error:
+        description: 误差
+        type: number
+      function_value:
+        description: 函数值
+        type: number
+      iterations:
+        description: 迭代次数
+        type: integer
+      jacobian:
+        description: 雅可比矩阵（线性方程组）
+        items:
+          items:
+            format: float64
+            type: number
+          type: array
+        type: array
+      solution:
+        description: 解
+      solution_path:
+        description: 解路径（微分方程）
+        items:
+          type: number
+        type: array
+      time_points:
+        description: 时间点（微分方程）
+        items:
+          type: number
+        type: array
     type: object
   models.CalculationRequest:
     properties:
@@ -176,6 +296,58 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 同时运行原始版本和修复版本，输出结构化差异报告，支持两种参数格式
+      parameters:
+      - description: 求解请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.SolverV2Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SolverCompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比V1和V2版本的求解器
+      tags:
+      - 方程求解
+  /api/solver/v2:
+    post:
+      consumes:
+      - application/json
+      description: 使用修复后的收敛判定逻辑求解方程，支持两种参数格式：直接格式或嵌套params格式
+      parameters:
+      - description: 求解请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.SolverV2Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SolverV2Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 修复版方程求解
+      tags:
+      - 方程求解
   /api/system-info:
     get:
       consumes:
