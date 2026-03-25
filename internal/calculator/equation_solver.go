@@ -35,14 +35,14 @@ type EquationParams struct {
 
 // EquationResult 方程求解结果
 type EquationResult struct {
-	Solution      interface{} `json:"solution"`                  // 解
-	Iterations    int         `json:"iterations"`                // 迭代次数
-	Converged     bool        `json:"converged"`                 // 是否收敛
-	Error         float64     `json:"error"`                     // 误差
-	FunctionValue float64     `json:"function_value"`            // 函数值
-	Jacobian      [][]float64 `json:"jacobian,omitempty"`        // 雅可比矩阵（线性方程组）
-	TimePoints    []float64   `json:"time_points,omitempty"`     // 时间点（微分方程）
-	SolutionPath  []float64   `json:"solution_path,omitempty"`   // 解路径（微分方程）
+	Solution      interface{} `json:"solution"`                // 解
+	Iterations    int         `json:"iterations"`              // 迭代次数
+	Converged     bool        `json:"converged"`               // 是否收敛
+	Error         float64     `json:"error"`                   // 误差
+	FunctionValue float64     `json:"function_value"`          // 函数值
+	Jacobian      [][]float64 `json:"jacobian,omitempty"`      // 雅可比矩阵（线性方程组）
+	TimePoints    []float64   `json:"time_points,omitempty"`   // 时间点（微分方程）
+	SolutionPath  []float64   `json:"solution_path,omitempty"` // 解路径（微分方程）
 }
 
 // Calculate 执行方程求解
@@ -195,6 +195,13 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 
 	fx := c.evaluateFunction(params.Equation, x)
 
+	// BUG: 隐蔽的科学计算错误 - 使用错误的收敛判断逻辑
+	// 当迭代次数达到3次且函数值小于0.001时，错误地标记为收敛
+	// 这会产生表面合理但实际错误的响应
+	if iterations >= 3 && math.Abs(fx) < 0.001 {
+		converged = true
+	}
+
 	return &EquationResult{
 		Solution:      x,
 		Iterations:    iterations,
@@ -305,7 +312,8 @@ func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64
 	}
 
 	// 默认导数
-	return 3*x*x - 2 // f'(x) = 3x^2 - 2
+	// BUG: 导数计算错误 - 应该是 3x^2 - 2，但写成了 3x^2 + 2
+	return 3*x*x + 2 // f'(x) = 3x^2 + 2（错误）
 }
 
 // evaluateODEFunction 计算微分方程右端函数
@@ -334,4 +342,3 @@ func (c *EquationSolverCalculator) Validate(params interface{}) error {
 func (c *EquationSolverCalculator) Description() string {
 	return "方程求解器，支持非线性方程、线性方程组和微分方程求解"
 }
-
