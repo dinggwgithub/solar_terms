@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"scientific_calc/internal/calculator"
@@ -228,11 +230,270 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// 方程求解器V2接口（修复版）
+	router.POST("/api/solver/v2", h.SolverV2)
+
+	// 方程求解器对比接口
+	router.POST("/api/solver/compare", h.SolverCompare)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
 	// 支持接口
 	router.GET("/api/supported-calculations", h.GetSupportedCalculations)
+}
+
+// SolverV2Request V2求解器请求（兼容 /api/calculate 格式）
+type SolverV2Request struct {
+	Calculation string                 `json:"calculation" example:"equation_solver"`
+	Params      map[string]interface{} `json:"params"`
+}
+
+// SolverV2 方程求解器V2接口（修复版）
+// @Summary 方程求解器V2（修复版）
+// @Description 使用修正后的牛顿迭代法求解非线性方程，包含详细迭代信息
+// @Tags 方程求解
+// @Accept json
+// @Produce json
+// @Param request body SolverV2Request true "求解请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/v2 [post]
+func (h *APIHandler) SolverV2(c *gin.Context) {
+	var req SolverV2Request
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.Params == nil {
+		h.sendError(c, http.StatusBadRequest, "缺少params参数")
+		return
+	}
+
+	equationType, _ := req.Params["equation_type"].(string)
+	if equationType == "" {
+		equationType = "nonlinear"
+	}
+
+	equation, _ := req.Params["equation"].(string)
+	if equation == "" {
+		h.sendError(c, http.StatusBadRequest, "缺少equation参数")
+		return
+	}
+
+	initialGuess := 2.0
+	if v, ok := req.Params["initial_guess"].(float64); ok {
+		initialGuess = v
+	}
+
+	tolerance := 1e-6
+	if v, ok := req.Params["tolerance"].(float64); ok {
+		tolerance = v
+	}
+
+	maxIterations := 100
+	if v, ok := req.Params["max_iterations"].(float64); ok {
+		maxIterations = int(v)
+	}
+
+	calc, exists := h.calculatorManager.GetCalculator(calculator.CalculationTypeEquationSolver)
+	if !exists {
+		h.sendError(c, http.StatusInternalServerError, "方程求解器未注册")
+		return
+	}
+
+	solver := calc.(*calculator.EquationSolverCalculator)
+	params := &calculator.EquationParams{
+		EquationType:  equationType,
+		Equation:      equation,
+		InitialGuess:  initialGuess,
+		Tolerance:     tolerance,
+		MaxIterations: maxIterations,
+	}
+
+	result, err := solver.SolveNonlinearEquationV2(params)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "求解失败: "+err.Error())
+		return
+	}
+
+	sessionID := GenerateSessionID()
+	h.sendSuccess(c, result, nil, "equation_solver_v2", sessionID)
+}
+
+// CompareRequest 对比请求（兼容 /api/calculate 格式）
+type CompareRequest struct {
+	Calculation string                 `json:"calculation" example:"equation_solver"`
+	Params      map[string]interface{} `json:"params"`
+}
+
+// CompareResult 对比结果
+type CompareResult struct {
+	Before   AfterCompare `json:"before"`
+	After    AfterCompare `json:"after"`
+	Diff     Difference   `json:"diff"`
+	Analysis string       `json:"analysis"`
+}
+
+// AfterCompare 修复前后对比数据
+type AfterCompare struct {
+	Solution      float64 `json:"solution"`
+	Iterations    int     `json:"iterations"`
+	Converged     bool    `json:"converged"`
+	Error         float64 `json:"error"`
+	FunctionValue float64 `json:"function_value"`
+}
+
+// Difference 差异数据
+type Difference struct {
+	SolutionDiff      float64 `json:"solution_diff"`
+	IterationsDiff    int     `json:"iterations_diff"`
+	ConvergedChanged  bool    `json:"converged_changed"`
+	ErrorDiff         float64 `json:"error_diff"`
+	FunctionValueDiff float64 `json:"function_value_diff"`
+}
+
+// SolverCompare 方程求解器对比接口
+// @Summary 方程求解器对比
+// @Description 对比修复前后的求解结果，输出结构化差异报告
+// @Tags 方程求解
+// @Accept json
+// @Produce json
+// @Param request body CompareRequest true "对比请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) SolverCompare(c *gin.Context) {
+	var req CompareRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.Params == nil {
+		h.sendError(c, http.StatusBadRequest, "缺少params参数")
+		return
+	}
+
+	equationType, _ := req.Params["equation_type"].(string)
+	if equationType == "" {
+		equationType = "nonlinear"
+	}
+
+	equation, _ := req.Params["equation"].(string)
+	if equation == "" {
+		h.sendError(c, http.StatusBadRequest, "缺少equation参数")
+		return
+	}
+
+	initialGuess := 2.0
+	if v, ok := req.Params["initial_guess"].(float64); ok {
+		initialGuess = v
+	}
+
+	tolerance := 1e-6
+	if v, ok := req.Params["tolerance"].(float64); ok {
+		tolerance = v
+	}
+
+	maxIterations := 100
+	if v, ok := req.Params["max_iterations"].(float64); ok {
+		maxIterations = int(v)
+	}
+
+	calc, exists := h.calculatorManager.GetCalculator(calculator.CalculationTypeEquationSolver)
+	if !exists {
+		h.sendError(c, http.StatusInternalServerError, "方程求解器未注册")
+		return
+	}
+
+	solver := calc.(*calculator.EquationSolverCalculator)
+	params := &calculator.EquationParams{
+		EquationType:  equationType,
+		Equation:      equation,
+		InitialGuess:  initialGuess,
+		Tolerance:     tolerance,
+		MaxIterations: maxIterations,
+	}
+
+	oldResult, err := solver.SolveNonlinearEquationOld(params)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "原版求解失败: "+err.Error())
+		return
+	}
+
+	newResult, err := solver.SolveNonlinearEquationV2(params)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "V2求解失败: "+err.Error())
+		return
+	}
+
+	oldSol, _ := oldResult.Solution.(float64)
+	newSol := newResult.Solution
+
+	before := AfterCompare{
+		Solution:      oldSol,
+		Iterations:    oldResult.Iterations,
+		Converged:     oldResult.Converged,
+		Error:         oldResult.Error,
+		FunctionValue: oldResult.FunctionValue,
+	}
+
+	after := AfterCompare{
+		Solution:      newSol,
+		Iterations:    newResult.Iterations,
+		Converged:     newResult.Converged,
+		Error:         newResult.Error,
+		FunctionValue: newResult.FunctionValue,
+	}
+
+	diff := Difference{
+		SolutionDiff:      newSol - oldSol,
+		IterationsDiff:    newResult.Iterations - oldResult.Iterations,
+		ConvergedChanged:  oldResult.Converged != newResult.Converged,
+		ErrorDiff:         newResult.Error - oldResult.Error,
+		FunctionValueDiff: newResult.FunctionValue - oldResult.FunctionValue,
+	}
+
+	analysis := generateAnalysis(before, after, diff)
+
+	result := CompareResult{
+		Before:   before,
+		After:    after,
+		Diff:     diff,
+		Analysis: analysis,
+	}
+
+	sessionID := GenerateSessionID()
+	h.sendSuccess(c, result, nil, "equation_solver_compare", sessionID)
+}
+
+func generateAnalysis(before, after AfterCompare, diff Difference) string {
+	analysis := "修复前后对比分析:\n"
+
+	analysis += fmt.Sprintf("1. 解的差异: %.10f (相对误差: %.2e)\n", diff.SolutionDiff, math.Abs(diff.SolutionDiff)/math.Abs(after.Solution))
+
+	if diff.IterationsDiff != 0 {
+		analysis += fmt.Sprintf("2. 迭代次数变化: %d -> %d (%+d次)\n", before.Iterations, after.Iterations, diff.IterationsDiff)
+	} else {
+		analysis += fmt.Sprintf("2. 迭代次数: 无变化 (%d次)\n", after.Iterations)
+	}
+
+	if diff.ConvergedChanged {
+		analysis += fmt.Sprintf("3. 收敛状态: %v -> %v (已修复)\n", before.Converged, after.Converged)
+	} else {
+		analysis += fmt.Sprintf("3. 收敛状态: 无变化 (%v)\n", after.Converged)
+	}
+
+	analysis += fmt.Sprintf("4. 残差改进: %.2e -> %.2e\n", before.FunctionValue, after.FunctionValue)
+
+	analysis += "\n修复内容:\n"
+	analysis += "- 修正导数计算错误: 3*x*x + 2 -> 3*x*x - 2\n"
+	analysis += "- 完善收敛判定: 双重收敛条件(deltaX & residual)\n"
+	analysis += "- 移除硬编码阈值，使用用户指定的tolerance\n"
+
+	return analysis
 }
 
 // GetSupportedCalculations 获取支持的计算类型接口
