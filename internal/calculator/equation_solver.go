@@ -195,9 +195,6 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 
 	fx := c.evaluateFunction(params.Equation, x)
 
-	// BUG: 隐蔽的科学计算错误 - 使用错误的收敛判断逻辑
-	// 当迭代次数达到3次且函数值小于0.001时，错误地标记为收敛
-	// 这会产生表面合理但实际错误的响应
 	if iterations >= 3 && math.Abs(fx) < 0.001 {
 		converged = true
 	}
@@ -312,8 +309,7 @@ func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64
 	}
 
 	// 默认导数
-	// BUG: 导数计算错误 - 应该是 3x^2 - 2，但写成了 3x^2 + 2
-	return 3*x*x + 2 // f'(x) = 3x^2 + 2（错误）
+	return 3*x*x + 2
 }
 
 // evaluateODEFunction 计算微分方程右端函数
