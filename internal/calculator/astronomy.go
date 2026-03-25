@@ -164,6 +164,7 @@ func (c *AstronomyCalculator) calculateAstronomy(params *AstronomyParams) (map[s
 }
 
 // calculateJulianDate 计算儒略日
+// 公式来源：Jean Meeus《天文算法》第7章，基于格里高利历
 func (c *AstronomyCalculator) calculateJulianDate(t time.Time) float64 {
 	year := float64(t.Year())
 	month := float64(t.Month())
@@ -180,6 +181,7 @@ func (c *AstronomyCalculator) calculateJulianDate(t time.Time) float64 {
 	A := math.Floor(year / 100)
 	B := 2 - A + math.Floor(A/4)
 
+	// 使用30.6001是Jean Meeus公式中的正确系数
 	jd := math.Floor(365.25*(year+4716)) + math.Floor(30.6001*(month+1)) + day + B - 1524.5
 	jd += (hour + minute/60 + second/3600) / 24
 
@@ -188,30 +190,25 @@ func (c *AstronomyCalculator) calculateJulianDate(t time.Time) float64 {
 
 // calculateSunLongitude 计算太阳黄经
 func (c *AstronomyCalculator) calculateSunLongitude(jd float64) float64 {
-	// 简化的太阳黄经计算
-	// 实际应该基于精确的天文算法
+	T := (jd - 2451545.0) / 36525.0
 
-	// 计算从J2000.0开始的天数
-	daysSinceJ2000 := jd - 2451545.0
-
-	// 平均黄经（度/天）
-	meanLongitude := 280.460 + 0.9856474*daysSinceJ2000
+	meanLongitude := 280.4664567 + 36000.76982779*T + 0.0003032028*T*T
 	meanLongitude = math.Mod(meanLongitude, 360)
 	if meanLongitude < 0 {
 		meanLongitude += 360
 	}
 
-	// 平近点角
-	meanAnomaly := 357.528 + 0.9856003*daysSinceJ2000
+	meanAnomaly := 357.5291092 + 35999.0502909*T - 0.0001536*T*T
 	meanAnomaly = math.Mod(meanAnomaly, 360)
 	if meanAnomaly < 0 {
 		meanAnomaly += 360
 	}
 
-	// 中心差（度）
-	equationOfCenter := 1.915*math.Sin(meanAnomaly*math.Pi/180) + 0.020*math.Sin(2*meanAnomaly*math.Pi/180)
+	meanAnomalyRad := meanAnomaly * math.Pi / 180
+	equationOfCenter := (1.914602-0.004817*T)*math.Sin(meanAnomalyRad) +
+		(0.019993-0.000101*T)*math.Sin(2*meanAnomalyRad) +
+		0.000289*math.Sin(3*meanAnomalyRad)
 
-	// 真黄经
 	trueLongitude := meanLongitude + equationOfCenter
 	trueLongitude = math.Mod(trueLongitude, 360)
 	if trueLongitude < 0 {
@@ -223,21 +220,13 @@ func (c *AstronomyCalculator) calculateSunLongitude(jd float64) float64 {
 
 // calculateApparentLongitude 计算视黄经
 func (c *AstronomyCalculator) calculateApparentLongitude(sunLongitude float64, jd float64) float64 {
-	// 简化的视黄经计算
-	// 实际应该考虑章动和光行差
-
-	// 章动修正（简化）
-	nutation := 0.004 * math.Sin((125.04-0.052954*jd)*math.Pi/180)
-
-	// 光行差修正（简化）
-	aberration := 0.0057 * math.Sin(sunLongitude*math.Pi/180)
-
+	nutation := c.calculateNutation(jd)
+	aberration := -20.4898 / 3600.0
 	apparentLongitude := sunLongitude + nutation + aberration
 	apparentLongitude = math.Mod(apparentLongitude, 360)
 	if apparentLongitude < 0 {
 		apparentLongitude += 360
 	}
-
 	return apparentLongitude
 }
 
@@ -249,9 +238,8 @@ func (c *AstronomyCalculator) calculateTrueLongitude(apparentLongitude float64) 
 
 // calculateMeanLongitude 计算平黄经
 func (c *AstronomyCalculator) calculateMeanLongitude(jd float64) float64 {
-	// 简化的平黄经计算
-	daysSinceJ2000 := jd - 2451545.0
-	meanLongitude := 280.460 + 0.9856474*daysSinceJ2000
+	T := (jd - 2451545.0) / 36525.0
+	meanLongitude := 280.4664567 + 36000.76982779*T + 0.0003032028*T*T
 	meanLongitude = math.Mod(meanLongitude, 360)
 	if meanLongitude < 0 {
 		meanLongitude += 360
@@ -261,9 +249,8 @@ func (c *AstronomyCalculator) calculateMeanLongitude(jd float64) float64 {
 
 // calculateMeanAnomaly 计算平近点角
 func (c *AstronomyCalculator) calculateMeanAnomaly(jd float64) float64 {
-	// 简化的平近点角计算
-	daysSinceJ2000 := jd - 2451545.0
-	meanAnomaly := 357.528 + 0.9856003*daysSinceJ2000
+	T := (jd - 2451545.0) / 36525.0
+	meanAnomaly := 357.5291092 + 35999.0502909*T - 0.0001536*T*T
 	meanAnomaly = math.Mod(meanAnomaly, 360)
 	if meanAnomaly < 0 {
 		meanAnomaly += 360
@@ -273,16 +260,19 @@ func (c *AstronomyCalculator) calculateMeanAnomaly(jd float64) float64 {
 
 // calculateEquationOfCenter 计算中心差
 func (c *AstronomyCalculator) calculateEquationOfCenter(meanAnomaly float64) float64 {
-	// 简化的中心差计算
+	T := 0.0
 	meanAnomalyRad := meanAnomaly * math.Pi / 180
-	equationOfCenter := 1.915*math.Sin(meanAnomalyRad) + 0.020*math.Sin(2*meanAnomalyRad)
+	equationOfCenter := (1.914602-0.004817*T)*math.Sin(meanAnomalyRad) +
+		(0.019993-0.000101*T)*math.Sin(2*meanAnomalyRad) +
+		0.000289*math.Sin(3*meanAnomalyRad)
 	return equationOfCenter
 }
 
 // calculateNutation 计算章动
 func (c *AstronomyCalculator) calculateNutation(jd float64) float64 {
-	// 简化的章动计算
-	nutation := 0.004 * math.Sin((125.04-0.052954*jd)*math.Pi/180)
+	T := (jd - 2451545.0) / 36525.0
+	Omega := 125.04 - 1934.136*T
+	OmegaRad := Omega * math.Pi / 180
+	nutation := (-17.20 / 3600.0) * math.Sin(OmegaRad)
 	return nutation
 }
-

@@ -73,6 +73,12 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 		calculator.NewAstronomyCalculator(),
 	)
 
+	// 注册修复后的天文计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypeAstronomyFixed,
+		calculator.NewAstronomyCalculatorFixed(),
+	)
+
 	// 注册起运岁数计算器
 	manager.RegisterCalculator(
 		calculator.CalculationTypeStartingAge,
