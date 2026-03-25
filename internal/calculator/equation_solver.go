@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 	"strings"
 )
 
@@ -336,11 +335,3 @@ func (c *EquationSolverCalculator) Description() string {
 	return "方程求解器，支持非线性方程、线性方程组和微分方程求解"
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *EquationSolverCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}

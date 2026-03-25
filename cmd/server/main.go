@@ -3,34 +3,30 @@ package main
 import (
 	"fmt"
 	"log"
-	"scientific_calc_bugs/internal/api"
-	"scientific_calc_bugs/internal/bugs"
-	"scientific_calc_bugs/internal/calculator"
+	"scientific_calc/internal/api"
+	"scientific_calc/internal/calculator"
 
-	_ "scientific_calc_bugs/docs"
+	_ "scientific_calc/docs"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title 科学计算Bug测试API
-// @version 2.0
-// @description 完整的科学计算Bug测试系统，支持8个科学计算任务和3类Bug，用于AI模型质量对比实验
+// @title 科学计算工具集 API
+// @version 1.0
+// @description 功能丰富的Go语言科学计算库，提供天文计算、历法转换、方程求解等多种科学计算功能。
 // @host localhost:8080
 // @BasePath /
 func main() {
-	// 初始化Bug管理器
-	bugManager := bugs.NewBugManager()
-
 	// 初始化计算器管理器
-	calculatorManager := calculator.NewCalculatorManager(bugManager)
+	calculatorManager := calculator.NewCalculatorManager()
 
 	// 注册所有科学计算器
 	registerCalculators(calculatorManager)
 
 	// 初始化API处理器
-	apiHandler := api.NewAPIHandler(calculatorManager, bugManager)
+	apiHandler := api.NewAPIHandler(calculatorManager)
 
 	// 初始化Gin路由
 	r := gin.Default()
@@ -43,7 +39,7 @@ func main() {
 
 	// 启动服务器
 	fmt.Println("========================================")
-	fmt.Println("科学计算Bug测试服务器 v2.0")
+	fmt.Println("科学计算工具集 ScientificCalc v1.0")
 	fmt.Println("========================================")
 	fmt.Println("服务器启动在 :8080")
 	fmt.Println("Swagger UI: http://localhost:8080/swagger/index.html")
@@ -52,9 +48,6 @@ func main() {
 	fmt.Println("========================================")
 	fmt.Println("支持的计算任务:")
 	printSupportedCalculations(calculatorManager)
-	fmt.Println("========================================")
-	fmt.Println("支持的Bug类型:")
-	printSupportedBugTypes(bugManager)
 	fmt.Println("========================================")
 
 	log.Fatal(r.Run(":8080"))
@@ -138,23 +131,11 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 // printSupportedCalculations 打印支持的计算任务
 func printSupportedCalculations(manager *calculator.CalculatorManager) {
 	supportedTypes := manager.GetSupportedCalculationTypes()
-	
+
 	for _, calcType := range supportedTypes {
 		calculator, exists := manager.GetCalculator(calcType)
 		if exists {
 			fmt.Printf("  • %s: %s\n", calcType.String(), calculator.Description())
-		}
-	}
-}
-
-// printSupportedBugTypes 打印支持的Bug类型
-func printSupportedBugTypes(manager *bugs.BugManager) {
-	supportedTypes := manager.GetSupportedBugTypes()
-	
-	for _, bugType := range supportedTypes {
-		bug, exists := manager.GetBug(bugType)
-		if exists {
-			fmt.Printf("  • %s: %s\n", bugType.String(), bug.Description())
 		}
 	}
 }

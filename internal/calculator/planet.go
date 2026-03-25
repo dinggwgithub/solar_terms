@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 )
 
 // PlanetCalculator 行星位置计算器
@@ -469,14 +468,6 @@ func (c *PlanetCalculator) normalizeAngle(angle float64) float64 {
 	return angle
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *PlanetCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}
 
 // GetPlanetInfo 获取行星基本信息（用于测试）
 func (c *PlanetCalculator) GetPlanetInfo(planetType PlanetType) map[string]interface{} {

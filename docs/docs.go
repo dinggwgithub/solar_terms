@@ -15,76 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/bug-info": {
-            "get": {
-                "description": "获取指定Bug类型的详细信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bug管理"
-                ],
-                "summary": "获取Bug信息",
-                "parameters": [
-                    {
-                        "enum": [
-                            "instability",
-                            "constraint",
-                            "precision"
-                        ],
-                        "type": "string",
-                        "description": "bug类型",
-                        "name": "bug_type",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.BugInfoResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/bug-statistics": {
-            "get": {
-                "description": "获取Bug系统的统计信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bug管理"
-                ],
-                "summary": "获取Bug统计信息",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/calculate-with-bugs": {
+        "/api/calculate": {
             "post": {
-                "description": "执行带有bug的科学计算（结果不稳定、约束越界、精度错误）",
+                "description": "执行各种类型的科学计算",
                 "consumes": [
                     "application/json"
                 ],
@@ -94,31 +27,12 @@ const docTemplate = `{
                 "tags": [
                     "科学计算"
                 ],
-                "summary": "执行带有bug的计算",
+                "summary": "执行科学计算",
                 "parameters": [
                     {
-                        "enum": [
-                            "instability",
-                            "constraint",
-                            "precision"
-                        ],
                         "type": "string",
-                        "default": "constraint",
-                        "description": "bug类型",
-                        "name": "bug_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "会话ID，用于保持Bug参数一致性，不传则自动生成",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
                         "name": "session_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "是否启用混合Bug模式",
-                        "name": "mixed_mode",
                         "in": "query"
                     },
                     {
@@ -233,32 +147,9 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.BugInfoResponse": {
-            "type": "object",
-            "properties": {
-                "bug_type": {
-                    "type": "string"
-                },
-                "characteristics": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "api.CalculationResponse": {
             "type": "object",
             "properties": {
-                "bug_type": {
-                    "type": "string"
-                },
                 "calculation": {
                     "type": "string"
                 },
@@ -288,12 +179,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "supported_bugs": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -335,20 +220,11 @@ const docTemplate = `{
         "api.SystemInfoResponse": {
             "type": "object",
             "properties": {
-                "supported_bug_types": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "supported_calculations": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
-                },
-                "total_bugs": {
-                    "type": "integer"
                 },
                 "total_calculators": {
                     "type": "integer"
@@ -365,50 +241,50 @@ const docTemplate = `{
             ],
             "properties": {
                 "calculation": {
-                    "description": "计算类型",
+                    "description": "璁＄畻绫诲瀷",
                     "type": "string"
                 },
                 "day": {
-                    "description": "日期",
+                    "description": "鏃ユ湡",
                     "type": "integer"
                 },
                 "days_from_term": {
-                    "description": "距节气天数",
+                    "description": "璺濊妭姘斿ぉ鏁?",
                     "type": "integer"
                 },
                 "hour": {
-                    "description": "小时",
+                    "description": "灏忔椂",
                     "type": "integer"
                 },
                 "minute": {
-                    "description": "分钟",
+                    "description": "鍒嗛挓",
                     "type": "integer"
                 },
                 "month": {
-                    "description": "月份",
+                    "description": "鏈堜唤",
                     "type": "integer"
                 },
                 "params": {
-                    "description": "计算参数（格式1）"
+                    "description": "璁＄畻鍙傛暟锛堟牸寮?锛?"
                 },
                 "second": {
-                    "description": "秒",
+                    "description": "绉?",
                     "type": "integer"
                 },
                 "solar_date": {
-                    "description": "阳历日期",
+                    "description": "闃冲巻鏃ユ湡",
                     "type": "string"
                 },
                 "target_longitude": {
-                    "description": "目标黄经",
+                    "description": "鐩爣榛勭粡",
                     "type": "number"
                 },
                 "term_index": {
-                    "description": "节气索引 (0-23)",
+                    "description": "鑺傛皵绱㈠紩 (0-23)",
                     "type": "integer"
                 },
                 "year": {
-                    "description": "直接参数（格式2）",
+                    "description": "鐩存帴鍙傛暟锛堟牸寮?锛?",
                     "type": "integer"
                 }
             }
@@ -418,12 +294,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "2.0",
+	Version:          "1.0",
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "科学计算Bug测试API",
-	Description:      "完整的科学计算Bug测试系统，支持8个科学计算任务和3类Bug，用于AI模型质量对比实验",
+	Title:            "科学计算工具集 API",
+	Description:      "功能丰富的Go语言科学计算库，提供天文计算、历法转换、方程求解等多种科学计算功能。",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -787,7 +787,3 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 ## 📄 许可证
 
 本项目采用MIT许可证。
-
----
-
-**注意**：本项目专为AI模型科学计算质量对比实验设计，所有Bug均为故意引入，用于评估AI模型的修复能力。

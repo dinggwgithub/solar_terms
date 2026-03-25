@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 )
 
 // MoonPhaseCalculator 月相计算器
@@ -432,14 +431,6 @@ func (c *MoonPhaseCalculator) normalizeAngle(angle float64) float64 {
 	return angle
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *MoonPhaseCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}
 
 // GetMoonPhaseCalendar 获取月相日历（用于测试）
 func (c *MoonPhaseCalculator) GetMoonPhaseCalendar(year, month int) ([]map[string]interface{}, error) {

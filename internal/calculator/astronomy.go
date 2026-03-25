@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 	"time"
 )
 
@@ -287,11 +286,3 @@ func (c *AstronomyCalculator) calculateNutation(jd float64) float64 {
 	return nutation
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *AstronomyCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}

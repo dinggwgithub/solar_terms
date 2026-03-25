@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 )
 
 // SunriseSunsetCalculator 日出日落时间计算器
@@ -452,14 +451,6 @@ func (c *SunriseSunsetCalculator) normalizeAngle(angle float64) float64 {
 	return angle
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *SunriseSunsetCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}
 
 // GetLocationInfo 获取地理位置信息（用于测试）
 func (c *SunriseSunsetCalculator) GetLocationInfo(longitude, latitude float64) map[string]interface{} {

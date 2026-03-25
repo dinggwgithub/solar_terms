@@ -2,7 +2,6 @@ package calculator
 
 import (
 	"fmt"
-	"scientific_calc_bugs/internal/bugs"
 	"time"
 )
 
@@ -263,11 +262,3 @@ func (c *GanZhiCalculator) calculateTimeGanZhi(hour int, dayGan string) (string,
 	return ganList[ganIndex], zhiList[zhiIndex]
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *GanZhiCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}

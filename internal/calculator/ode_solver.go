@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 )
 
 // ODESolverCalculator 微分方程求解器
@@ -381,11 +380,3 @@ func (c *ODESolverCalculator) Description() string {
 	return "微分方程求解器，支持常微分方程和偏微分方程数值求解"
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *ODESolverCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}

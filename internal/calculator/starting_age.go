@@ -2,7 +2,6 @@ package calculator
 
 import (
 	"fmt"
-	"scientific_calc_bugs/internal/bugs"
 	"time"
 )
 
@@ -340,11 +339,3 @@ func (c *StartingAgeCalculator) getCycleDescription(gan, zhi string) string {
 	return "平稳发展，顺其自然"
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *StartingAgeCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}

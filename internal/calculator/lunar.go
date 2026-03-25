@@ -2,7 +2,6 @@ package calculator
 
 import (
 	"fmt"
-	"scientific_calc_bugs/internal/bugs"
 	"time"
 )
 
@@ -231,14 +230,6 @@ func (c *LunarCalculator) formatLunarString(year, month, day int, isLeap bool) s
 	return fmt.Sprintf("%s%s年%s月%s", gan, zhi, monthStr, dayStr)
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *LunarCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}
 
 // LunarCalculationResult 农历计算结果
 type LunarCalculationResult struct {

@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 	"time"
 )
 
@@ -212,11 +211,3 @@ func (c *SolarTermCalculator) getTermIndexByName(name string) int {
 	return -1
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *SolarTermCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}

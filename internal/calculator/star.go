@@ -3,7 +3,6 @@ package calculator
 import (
 	"fmt"
 	"math"
-	"scientific_calc_bugs/internal/bugs"
 	"time"
 )
 
@@ -37,11 +36,11 @@ type StarResult struct {
 	StarPosition     string   `json:"star_position"`                 // 星曜位置
 	Auspicious       bool     `json:"auspicious"`                    // 是否吉日
 	AuspiciousInfo   []string `json:"auspicious_info"`               // 吉凶信息
-	DayScore         float64  `json:"day_score,omitempty"`           // 日分值（用于Bug演示）
-	ConstellationIdx int      `json:"constellation_index,omitempty"` // 二十八宿索引（用于Bug演示）
-	AuspiciousLevel  float64  `json:"auspicious_level,omitempty"`    // 吉凶程度量化值（用于Bug演示）
-	JulianDay        float64  `json:"julian_day,omitempty"`          // 儒略日（用于Bug演示）
-	TimeCoordinate   float64  `json:"time_coordinate,omitempty"`     // 时间坐标值（用于Bug演示）
+	DayScore         float64  `json:"day_score,omitempty"`           // 日分值
+	ConstellationIdx int      `json:"constellation_index,omitempty"` // 二十八宿索引
+	AuspiciousLevel  float64  `json:"auspicious_level,omitempty"`    // 吉凶程度量化值
+	JulianDay        float64  `json:"julian_day,omitempty"`          // 儒略日
+	TimeCoordinate   float64  `json:"time_coordinate,omitempty"`     // 时间坐标值
 }
 
 // Calculate 执行星曜推算计算
@@ -162,7 +161,7 @@ func (c *StarCalculator) calculateStarInfo(year, month, day int) (*StarResult, e
 	// 判断吉凶
 	auspicious, auspiciousInfo := c.judgeAuspicious(dayGanZhi, constellation)
 
-	// ========== 新增：计算数值字段（用于Bug演示） ==========
+	// 计算扩展数值字段
 
 	// 计算儒略日
 	jd := c.dateToJulianDay(year, month, day)
@@ -354,7 +353,7 @@ func (c *StarCalculator) isAuspiciousConstellation(constellation string) bool {
 	return false
 }
 
-// ========== 新增：Bug演示用的辅助函数 ==========
+// 辅助函数
 
 // dateToJulianDay 将日期转换为儒略日（天文计算用）
 func (c *StarCalculator) dateToJulianDay(year, month, day int) float64 {
@@ -412,14 +411,6 @@ func (c *StarCalculator) isSpecialAuspiciousDay(dayGanZhi, constellation string)
 	return false
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *StarCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}
 
 // GetConstellationInfo 获取二十八宿信息（用于测试）
 func (c *StarCalculator) GetConstellationInfo(constellation string) map[string]interface{} {

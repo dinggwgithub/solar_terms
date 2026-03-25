@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"scientific_calc_bugs/internal/bugs"
 	"strconv"
 	"strings"
 )
@@ -44,7 +43,7 @@ type SymbolicResult struct {
 	NumericValue       float64            `json:"numeric_value"`       // 数值结果
 	Variables          map[string]float64 `json:"variables"`           // 变量值
 	OperationType      string             `json:"operation_type"`      // 操作类型
-	// ========== 新增：Bug演示用字段 ==========
+	// 扩展数据字段
 	ExpressionComplexity float64 `json:"expression_complexity,omitempty"` // 表达式复杂度评分
 	VariableCount        int     `json:"variable_count,omitempty"`        // 变量数量
 	TermCount            float64 `json:"term_count,omitempty"`            // 项数统计
@@ -172,7 +171,7 @@ func (c *SymbolicCalcCalculator) parseExpression(params *SymbolicParams) (*Symbo
 		OperationType:      "parse",
 	}
 
-	// 填充数值字段用于Bug演示
+	// 填充扩展数值字段
 	c.populateNumericFields(result, params)
 	return result, nil
 }
@@ -191,7 +190,7 @@ func (c *SymbolicCalcCalculator) differentiateExpression(params *SymbolicParams)
 		OperationType:      "differentiate",
 	}
 
-	// 填充数值字段用于Bug演示
+	// 填充扩展数值字段
 	c.populateNumericFields(result, params)
 	return result, nil
 }
@@ -210,7 +209,7 @@ func (c *SymbolicCalcCalculator) simplifyExpression(params *SymbolicParams) (*Sy
 		OperationType:      "simplify",
 	}
 
-	// 填充数值字段用于Bug演示
+	// 填充扩展数值字段
 	c.populateNumericFields(result, params)
 	return result, nil
 }
@@ -235,7 +234,7 @@ func (c *SymbolicCalcCalculator) evaluateExpression(params *SymbolicParams) (*Sy
 		OperationType:      "evaluate",
 	}
 
-	// 填充数值字段用于Bug演示
+	// 填充扩展数值字段
 	c.populateNumericFields(result, params)
 	return result, nil
 }
@@ -419,18 +418,10 @@ func (c *SymbolicCalcCalculator) Description() string {
 	return "符号计算器，支持表达式解析、符号求导和表达式化简"
 }
 
-// GetSupportedBugTypes 返回支持的Bug类型
-func (c *SymbolicCalcCalculator) GetSupportedBugTypes() []bugs.BugType {
-	return []bugs.BugType{
-		bugs.BugTypeInstability,
-		bugs.BugTypeConstraint,
-		bugs.BugTypePrecision,
-	}
-}
 
-// ========== 新增：Bug演示用的辅助函数 ==========
+// 辅助函数
 
-// populateNumericFields 填充数值字段用于Bug演示
+// populateNumericFields 填充扩展数值字段
 func (c *SymbolicCalcCalculator) populateNumericFields(result *SymbolicResult, params *SymbolicParams) {
 	if result == nil {
 		return

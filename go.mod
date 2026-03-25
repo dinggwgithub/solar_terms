@@ -1,4 +1,4 @@
-module scientific_calc_bugs
+module scientific_calc
 
 go 1.25.0
 

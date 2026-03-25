@@ -3,25 +3,33 @@ package api
 import (
 	"math/rand"
 	"net/http"
-	"scientific_calc_bugs/internal/bugs"
-	"scientific_calc_bugs/internal/calculator"
-	"scientific_calc_bugs/models"
+	"scientific_calc/internal/calculator"
+	"scientific_calc/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
+// GenerateSessionID 生成会话ID
+func GenerateSessionID() string {
+	rand.Seed(time.Now().UnixNano())
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 16)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
 // APIHandler API处理器
 type APIHandler struct {
 	calculatorManager *calculator.CalculatorManager
-	bugManager        *bugs.BugManager
 }
 
 // NewAPIHandler 创建新的API处理器
-func NewAPIHandler(calculatorManager *calculator.CalculatorManager, bugManager *bugs.BugManager) *APIHandler {
+func NewAPIHandler(calculatorManager *calculator.CalculatorManager) *APIHandler {
 	return &APIHandler{
 		calculatorManager: calculatorManager,
-		bugManager:        bugManager,
 	}
 }
 
@@ -39,7 +47,6 @@ type CalculationResponse struct {
 	Result      interface{} `json:"result"`
 	Warnings    []string    `json:"warnings"`
 	Timestamp   string      `json:"timestamp"`
-	BugType     string      `json:"bug_type,omitempty"`
 	Calculation string      `json:"calculation"`
 	SessionID   string      `json:"session_id,omitempty"`
 }
@@ -51,28 +58,17 @@ type ErrorResponse struct {
 	Code    int    `json:"code"`
 }
 
-// BugInfoResponse Bug信息响应
-type BugInfoResponse struct {
-	BugType         string            `json:"bug_type"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	Characteristics map[string]string `json:"characteristics"`
-}
-
 // CalculatorInfoResponse 计算器信息响应
 type CalculatorInfoResponse struct {
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	SupportedBugs []string `json:"supported_bugs"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 // SystemInfoResponse 系统信息响应
 type SystemInfoResponse struct {
 	Version               string   `json:"version"`
 	SupportedCalculations []string `json:"supported_calculations"`
-	SupportedBugTypes     []string `json:"supported_bug_types"`
 	TotalCalculators      int      `json:"total_calculators"`
-	TotalBugs             int      `json:"total_bugs"`
 }
 
 // HealthCheck 健康检查接口
@@ -92,20 +88,18 @@ func (h *APIHandler) HealthCheck(c *gin.Context) {
 	})
 }
 
-// CalculateWithBugs 带有bug的计算接口
-// @Summary 执行带有bug的计算
-// @Description 执行带有bug的科学计算（结果不稳定、约束越界、精度错误）
+// Calculate 科学计算接口
+// @Summary 执行科学计算
+// @Description 执行各种类型的科学计算
 // @Tags 科学计算
 // @Accept json
 // @Produce json
-// @Param bug_type query string false "bug类型" Enums(instability, constraint, precision) Default(constraint)
-// @Param session_id query string false "会话ID，用于保持Bug参数一致性，不传则自动生成"
-// @Param mixed_mode query boolean false "是否启用混合Bug模式" Default(false)
+// @Param session_id query string false "会话ID，用于保持计算参数一致性，不传则自动生成"
 // @Param request body models.CalculationRequest true "计算请求参数"
 // @Success 200 {object} CalculationResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/calculate-with-bugs [post]
-func (h *APIHandler) CalculateWithBugs(c *gin.Context) {
+// @Router /api/calculate [post]
+func (h *APIHandler) Calculate(c *gin.Context) {
 	var req models.CalculationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
@@ -119,88 +113,20 @@ func (h *APIHandler) CalculateWithBugs(c *gin.Context) {
 		return
 	}
 
-	// 解析Bug类型
-	// 防作弊机制：不允许使用 bug_type=none（无Bug模式），未指定时随机分配Bug类型
-	bugTypeStr := c.DefaultQuery("bug_type", "")
-
-	// 如果未指定或请求了 none（作弊尝试），随机分配一个Bug类型
-	if bugTypeStr == "" || bugTypeStr == "none" {
-		availableTypes := []string{"instability", "constraint", "precision"}
-		rand.Seed(time.Now().UnixNano())
-		bugTypeStr = availableTypes[rand.Intn(len(availableTypes))]
-		// 添加Header用于调试，但AI通常不会检查这个
-		c.Header("X-Forced-Bug-Type", bugTypeStr)
-	}
-
-	bugType, err := h.bugManager.GetBugTypeFromString(bugTypeStr)
-	if err != nil {
-		h.sendError(c, http.StatusBadRequest, "不支持的Bug类型: "+bugTypeStr)
-		return
-	}
-
-	// 获取或生成会话ID（用于保持Bug参数一致性）
+	// 获取或生成会话ID（用于保持参数一致性）
 	sessionID := c.DefaultQuery("session_id", "")
 	if sessionID == "" {
-		sessionID = bugs.GenerateSessionID()
+		sessionID = GenerateSessionID()
 	}
 
-	// 解析混合模式
-	mixedMode := c.DefaultQuery("mixed_mode", "false") == "true"
-
 	// 执行计算
-	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), bugType, sessionID, mixedMode)
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
 	if err != nil {
 		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
 		return
 	}
 
-	h.sendSuccess(c, result, warnings, bugType.String(), req.Calculation, sessionID)
-}
-
-// GetBugInfo 获取Bug信息接口
-// @Summary 获取Bug信息
-// @Description 获取指定Bug类型的详细信息
-// @Tags Bug管理
-// @Accept json
-// @Produce json
-// @Param bug_type query string true "bug类型" Enums(instability, constraint, precision)
-// @Success 200 {object} BugInfoResponse
-// @Failure 400 {object} ErrorResponse
-// @Router /api/bug-info [get]
-func (h *APIHandler) GetBugInfo(c *gin.Context) {
-	bugTypeStr := c.Query("bug_type")
-	if bugTypeStr == "" {
-		h.sendError(c, http.StatusBadRequest, "缺少bug_type参数")
-		return
-	}
-
-	bugType, err := h.bugManager.GetBugTypeFromString(bugTypeStr)
-	if err != nil {
-		h.sendError(c, http.StatusBadRequest, "不支持的Bug类型: "+bugTypeStr)
-		return
-	}
-
-	bugInfo, err := h.bugManager.GetBugInfo(bugType)
-	if err != nil {
-		h.sendError(c, http.StatusBadRequest, "获取Bug信息失败: "+err.Error())
-		return
-	}
-
-	response := BugInfoResponse{
-		BugType:         bugType.String(),
-		Name:            bugInfo["name"],
-		Description:     bugInfo["description"],
-		Characteristics: make(map[string]string),
-	}
-
-	// 提取特征信息
-	for key, value := range bugInfo {
-		if len(key) > 14 && key[:14] == "characteristic_" {
-			response.Characteristics[key[14:]] = value
-		}
-	}
-
-	c.JSON(http.StatusOK, response)
+	h.sendSuccess(c, result, warnings, req.Calculation, sessionID)
 }
 
 // GetCalculatorInfo 获取计算器信息接口
@@ -233,16 +159,8 @@ func (h *APIHandler) GetCalculatorInfo(c *gin.Context) {
 	}
 
 	response := CalculatorInfoResponse{
-		Name:          calcInfo["name"],
-		Description:   calcInfo["description"],
-		SupportedBugs: []string{},
-	}
-
-	// 解析支持的Bug类型
-	if supportedBugs, exists := calcInfo["supported_bugs"]; exists {
-		// 这里应该解析字符串为切片
-		// 简化处理
-		response.SupportedBugs = []string{supportedBugs}
+		Name:        calcInfo["name"],
+		Description: calcInfo["description"],
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -264,52 +182,22 @@ func (h *APIHandler) GetSystemInfo(c *gin.Context) {
 		calcTypes = append(calcTypes, calcType.String())
 	}
 
-	// 获取支持的Bug类型
-	supportedBugTypes := h.bugManager.GetSupportedBugTypes()
-	bugTypes := make([]string, 0, len(supportedBugTypes))
-	for _, bugType := range supportedBugTypes {
-		bugTypes = append(bugTypes, bugType.String())
-	}
-
-	// 获取统计信息
-	bugStats := h.bugManager.GetBugStatistics()
-	totalBugs := 0
-	if total, exists := bugStats["total_bugs"]; exists {
-		totalBugs = total.(int)
-	}
-
 	response := SystemInfoResponse{
 		Version:               "1.0.0",
 		SupportedCalculations: calcTypes,
-		SupportedBugTypes:     bugTypes,
 		TotalCalculators:      len(supportedCalculations),
-		TotalBugs:             totalBugs,
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
-// GetBugStatistics 获取Bug统计信息接口
-// @Summary 获取Bug统计信息
-// @Description 获取Bug系统的统计信息
-// @Tags Bug管理
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Router /api/bug-statistics [get]
-func (h *APIHandler) GetBugStatistics(c *gin.Context) {
-	stats := h.bugManager.GetBugStatistics()
-	c.JSON(http.StatusOK, stats)
-}
-
 // sendSuccess 发送成功响应
-func (h *APIHandler) sendSuccess(c *gin.Context, result interface{}, warnings []string, bugType, calculation string, sessionID ...string) {
+func (h *APIHandler) sendSuccess(c *gin.Context, result interface{}, warnings []string, calculation string, sessionID ...string) {
 	response := CalculationResponse{
 		Success:     true,
 		Result:      result,
 		Warnings:    warnings,
 		Timestamp:   time.Now().Format(time.RFC3339),
-		BugType:     bugType,
 		Calculation: calculation,
 	}
 
@@ -338,18 +226,13 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	router.GET("/api/system-info", h.GetSystemInfo)
 
 	// 科学计算接口
-	router.POST("/api/calculate-with-bugs", h.CalculateWithBugs)
-
-	// Bug管理接口
-	router.GET("/api/bug-info", h.GetBugInfo)
-	router.GET("/api/bug-statistics", h.GetBugStatistics)
+	router.POST("/api/calculate", h.Calculate)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
-	// 实验支持接口
+	// 支持接口
 	router.GET("/api/supported-calculations", h.GetSupportedCalculations)
-	router.GET("/api/supported-bug-types", h.GetSupportedBugTypes)
 }
 
 // GetSupportedCalculations 获取支持的计算类型接口
@@ -371,27 +254,5 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"calculations": calculations,
 		"total":        len(calculations),
-	})
-}
-
-// GetSupportedBugTypes 获取支持的Bug类型接口
-func (h *APIHandler) GetSupportedBugTypes(c *gin.Context) {
-	supportedBugTypes := h.bugManager.GetSupportedBugTypes()
-
-	var bugTypes []map[string]interface{}
-	for _, bugType := range supportedBugTypes {
-		bugInfo, err := h.bugManager.GetBugInfo(bugType)
-		if err == nil {
-			bugTypes = append(bugTypes, map[string]interface{}{
-				"type":        bugType.String(),
-				"name":        bugInfo["name"],
-				"description": bugInfo["description"],
-			})
-		}
-	}
-
-	c.JSON(http.StatusOK, map[string]interface{}{
-		"bug_types": bugTypes,
-		"total":     len(bugTypes),
 	})
 }

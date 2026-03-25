@@ -1,22 +1,7 @@
 basePath: /
 definitions:
-  api.BugInfoResponse:
-    properties:
-      bug_type:
-        type: string
-      characteristics:
-        additionalProperties:
-          type: string
-        type: object
-      description:
-        type: string
-      name:
-        type: string
-    type: object
   api.CalculationResponse:
     properties:
-      bug_type:
-        type: string
       calculation:
         type: string
       result: {}
@@ -37,10 +22,6 @@ definitions:
         type: string
       name:
         type: string
-      supported_bugs:
-        items:
-          type: string
-        type: array
     type: object
   api.ErrorResponse:
     properties:
@@ -68,16 +49,10 @@ definitions:
     type: object
   api.SystemInfoResponse:
     properties:
-      supported_bug_types:
-        items:
-          type: string
-        type: array
       supported_calculations:
         items:
           type: string
         type: array
-      total_bugs:
-        type: integer
       total_calculators:
         type: integer
       version:
@@ -86,39 +61,39 @@ definitions:
   models.CalculationRequest:
     properties:
       calculation:
-        description: 计算类型
+        description: 璁＄畻绫诲瀷
         type: string
       day:
-        description: 日期
+        description: 鏃ユ湡
         type: integer
       days_from_term:
-        description: 距节气天数
+        description: 璺濊妭姘斿ぉ鏁?
         type: integer
       hour:
-        description: 小时
+        description: 灏忔椂
         type: integer
       minute:
-        description: 分钟
+        description: 鍒嗛挓
         type: integer
       month:
-        description: 月份
+        description: 鏈堜唤
         type: integer
       params:
-        description: 计算参数（格式1）
+        description: 璁＄畻鍙傛暟锛堟牸寮?锛?
       second:
-        description: 秒
+        description: 绉?
         type: integer
       solar_date:
-        description: 阳历日期
+        description: 闃冲巻鏃ユ湡
         type: string
       target_longitude:
-        description: 目标黄经
+        description: 鐩爣榛勭粡
         type: number
       term_index:
-        description: 节气索引 (0-23)
+        description: 鑺傛皵绱㈠紩 (0-23)
         type: integer
       year:
-        description: 直接参数（格式2）
+        description: 鐩存帴鍙傛暟锛堟牸寮?锛?
         type: integer
     required:
     - calculation
@@ -126,79 +101,20 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: 完整的科学计算Bug测试系统，支持8个科学计算任务和3类Bug，用于AI模型质量对比实验
-  title: 科学计算Bug测试API
-  version: "2.0"
+  description: 功能丰富的Go语言科学计算库，提供天文计算、历法转换、方程求解等多种科学计算功能。
+  title: 科学计算工具集 API
+  version: "1.0"
 paths:
-  /api/bug-info:
-    get:
-      consumes:
-      - application/json
-      description: 获取指定Bug类型的详细信息
-      parameters:
-      - description: bug类型
-        enum:
-        - instability
-        - constraint
-        - precision
-        in: query
-        name: bug_type
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.BugInfoResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: 获取Bug信息
-      tags:
-      - Bug管理
-  /api/bug-statistics:
-    get:
-      consumes:
-      - application/json
-      description: 获取Bug系统的统计信息
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 获取Bug统计信息
-      tags:
-      - Bug管理
-  /api/calculate-with-bugs:
+  /api/calculate:
     post:
       consumes:
       - application/json
-      description: 执行带有bug的科学计算（结果不稳定、约束越界、精度错误）
+      description: 执行各种类型的科学计算
       parameters:
-      - default: constraint
-        description: bug类型
-        enum:
-        - instability
-        - constraint
-        - precision
-        in: query
-        name: bug_type
-        type: string
-      - description: 会话ID，用于保持Bug参数一致性，不传则自动生成
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
         in: query
         name: session_id
         type: string
-      - default: false
-        description: 是否启用混合Bug模式
-        in: query
-        name: mixed_mode
-        type: boolean
       - description: 计算请求参数
         in: body
         name: request
@@ -216,7 +132,7 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: 执行带有bug的计算
+      summary: 执行科学计算
       tags:
       - 科学计算
   /api/calculator-info:
