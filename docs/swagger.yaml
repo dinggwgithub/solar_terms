@@ -47,6 +47,13 @@ definitions:
         example: 1.0.0
         type: string
     type: object
+  api.SolverCompareResponse:
+    properties:
+      analysis:
+        $ref: '#/definitions/calculator.CompareAnalysis'
+      comparison:
+        $ref: '#/definitions/calculator.ComparisonResult'
+    type: object
   api.SystemInfoResponse:
     properties:
       supported_calculations:
@@ -57,6 +64,76 @@ definitions:
         type: integer
       version:
         type: string
+    type: object
+  calculator.CompareAnalysis:
+    properties:
+      analysis:
+        description: 差异分析
+        type: string
+      converged_changed:
+        description: 收敛状态是否改变
+        type: boolean
+      error_diff:
+        description: 误差差异
+        type: number
+      function_value_diff:
+        description: 函数值差异
+        type: number
+      iterations_diff:
+        description: 迭代次数差异
+        type: integer
+      solution_diff:
+        description: 解的差异
+        type: number
+    type: object
+  calculator.ComparisonResult:
+    properties:
+      fixed:
+        allOf:
+        - $ref: '#/definitions/calculator.EquationResult'
+        description: 修复后算法结果
+      original:
+        allOf:
+        - $ref: '#/definitions/calculator.EquationResult'
+        description: 原始算法结果
+      timestamp:
+        description: 时间戳
+        type: string
+    type: object
+  calculator.EquationResult:
+    properties:
+      converged:
+        description: 是否收敛
+        type: boolean
+      error:
+        description: 误差
+        type: number
+      function_value:
+        description: 函数值
+        type: number
+      iterations:
+        description: 迭代次数
+        type: integer
+      jacobian:
+        description: 雅可比矩阵（线性方程组）
+        items:
+          items:
+            format: float64
+            type: number
+          type: array
+        type: array
+      solution:
+        description: 解
+      solution_path:
+        description: 解路径（微分方程）
+        items:
+          type: number
+        type: array
+      time_points:
+        description: 时间点（微分方程）
+        items:
+          type: number
+        type: array
     type: object
   models.CalculationRequest:
     properties:
@@ -176,6 +253,62 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比原始算法和修复后算法的求解结果
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SolverCompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 求解器对比接口
+      tags:
+      - 科学计算
+  /api/solver/v2:
+    post:
+      consumes:
+      - application/json
+      description: 使用修复后算法的方程求解器接口（V2版本）
+      parameters:
+      - description: 会话ID
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 修复版方程求解器
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:

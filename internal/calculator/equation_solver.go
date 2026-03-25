@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
 // EquationSolverCalculator 方程求解器
@@ -43,6 +44,23 @@ type EquationResult struct {
 	Jacobian      [][]float64 `json:"jacobian,omitempty"`      // 雅可比矩阵（线性方程组）
 	TimePoints    []float64   `json:"time_points,omitempty"`   // 时间点（微分方程）
 	SolutionPath  []float64   `json:"solution_path,omitempty"` // 解路径（微分方程）
+}
+
+// ComparisonResult 对比结果
+type ComparisonResult struct {
+	Original  *EquationResult `json:"original"`  // 原始算法结果
+	Fixed     *EquationResult `json:"fixed"`     // 修复后算法结果
+	Timestamp string          `json:"timestamp"` // 时间戳
+}
+
+// CompareAnalysis 差异分析
+type CompareAnalysis struct {
+	SolutionDiff      float64 `json:"solution_diff"`       // 解的差异
+	IterationsDiff    int     `json:"iterations_diff"`     // 迭代次数差异
+	ConvergedChanged  bool    `json:"converged_changed"`   // 收敛状态是否改变
+	ErrorDiff         float64 `json:"error_diff"`          // 误差差异
+	FunctionValueDiff float64 `json:"function_value_diff"` // 函数值差异
+	Analysis          string  `json:"analysis"`            // 差异分析
 }
 
 // Calculate 执行方程求解
@@ -169,10 +187,11 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 	x := params.InitialGuess
 	iterations := 0
 	converged := false
+	var fx float64
 
 	for iterations < params.MaxIterations {
 		// 计算函数值和导数值
-		fx := c.evaluateFunction(params.Equation, x)
+		fx = c.evaluateFunction(params.Equation, x)
 		fpx := c.evaluateDerivative(params.Equation, x)
 
 		// 检查导数是否为零
@@ -183,9 +202,12 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 		// 牛顿迭代公式: x_{n+1} = x_n - f(x_n)/f'(x_n)
 		xNew := x - fx/fpx
 
-		// 检查收敛性
-		if math.Abs(xNew-x) < params.Tolerance {
+		// 检查收敛性：同时检查解的变化量和残差的绝对值
+		// 满足任一条件即认为收敛
+		if math.Abs(xNew-x) < params.Tolerance || math.Abs(fx) < params.Tolerance {
 			converged = true
+			x = xNew
+			iterations++
 			break
 		}
 
@@ -193,11 +215,8 @@ func (c *EquationSolverCalculator) solveNonlinearEquation(params *EquationParams
 		iterations++
 	}
 
-	fx := c.evaluateFunction(params.Equation, x)
-
-	if iterations >= 3 && math.Abs(fx) < 0.001 {
-		converged = true
-	}
+	// 更新最终函数值
+	fx = c.evaluateFunction(params.Equation, x)
 
 	return &EquationResult{
 		Solution:      x,
@@ -308,8 +327,8 @@ func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64
 		return math.Exp(x) // f'(x) = exp(x)
 	}
 
-	// 默认导数
-	return 3*x*x + 2
+	// 默认导数：f(x) = x^3 - 2x - 5 的导数是 f'(x) = 3x^2 - 2
+	return 3*x*x - 2
 }
 
 // evaluateODEFunction 计算微分方程右端函数
@@ -337,4 +356,148 @@ func (c *EquationSolverCalculator) Validate(params interface{}) error {
 // Description 返回计算器描述
 func (c *EquationSolverCalculator) Description() string {
 	return "方程求解器，支持非线性方程、线性方程组和微分方程求解"
+}
+
+// solveNonlinearEquationOriginal 原始有缺陷的牛顿迭代法实现（用于对比测试）
+func (c *EquationSolverCalculator) solveNonlinearEquationOriginal(params *EquationParams) (*EquationResult, error) {
+	x := params.InitialGuess
+	iterations := 0
+	converged := false
+
+	for iterations < params.MaxIterations {
+		// 计算函数值和导数值
+		fx := c.evaluateFunction(params.Equation, x)
+		fpx := c.evaluateDerivativeOriginal(params.Equation, x) // 使用原始有缺陷的导数计算
+
+		// 检查导数是否为零
+		if math.Abs(fpx) < 1e-12 {
+			break
+		}
+
+		// 牛顿迭代公式: x_{n+1} = x_n - f(x_n)/f'(x_n)
+		xNew := x - fx/fpx
+
+		// 原始收敛条件：只检查解的变化量
+		if math.Abs(xNew-x) < params.Tolerance {
+			converged = true
+			break
+		}
+
+		x = xNew
+		iterations++
+	}
+
+	fx := c.evaluateFunction(params.Equation, x)
+
+	// 原始缺陷逻辑：迭代次数>=3且|f(x)|<0.001就强制收敛
+	if iterations >= 3 && math.Abs(fx) < 0.001 {
+		converged = true
+	}
+
+	return &EquationResult{
+		Solution:      x,
+		Iterations:    iterations,
+		Converged:     converged,
+		Error:         math.Abs(fx),
+		FunctionValue: fx,
+	}, nil
+}
+
+// evaluateDerivativeOriginal 原始有缺陷的导数计算（符号错误）
+func (c *EquationSolverCalculator) evaluateDerivativeOriginal(equation string, x float64) float64 {
+	if strings.Contains(equation, "x^2") {
+		return 2 * x
+	} else if strings.Contains(equation, "sin") {
+		return math.Cos(x)
+	} else if strings.Contains(equation, "exp") {
+		return math.Exp(x)
+	}
+
+	// 原始缺陷：导数符号错误
+	return 3*x*x + 2
+}
+
+// CompareSolvers 对比原始算法和修复后算法
+func (c *EquationSolverCalculator) CompareSolvers(params interface{}) (*ComparisonResult, *CompareAnalysis, error) {
+	equationParams, err := c.parseParams(params)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := c.validateParams(equationParams); err != nil {
+		return nil, nil, err
+	}
+
+	var originalResult *EquationResult
+	var fixedResult *EquationResult
+
+	switch equationParams.EquationType {
+	case "nonlinear":
+		// 使用原始算法求解
+		originalResult, err = c.solveNonlinearEquationOriginal(equationParams)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// 使用修复后算法求解
+		fixedResult, err = c.solveNonlinearEquation(equationParams)
+		if err != nil {
+			return nil, nil, err
+		}
+	default:
+		return nil, nil, fmt.Errorf("当前仅支持非线性方程的对比测试")
+	}
+
+	comparisonResult := &ComparisonResult{
+		Original:  originalResult,
+		Fixed:     fixedResult,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	// 计算差异分析
+	analysis := c.calculateAnalysis(originalResult, fixedResult, equationParams.Tolerance)
+
+	return comparisonResult, analysis, nil
+}
+
+// calculateAnalysis 计算差异分析
+func (c *EquationSolverCalculator) calculateAnalysis(original, fixed *EquationResult, tolerance float64) *CompareAnalysis {
+	originalSolution, _ := original.Solution.(float64)
+	fixedSolution, _ := fixed.Solution.(float64)
+
+	solutionDiff := math.Abs(fixedSolution - originalSolution)
+	iterationsDiff := fixed.Iterations - original.Iterations
+	convergedChanged := original.Converged != fixed.Converged
+	errorDiff := math.Abs(fixed.Error - original.Error)
+	functionValueDiff := math.Abs(fixed.FunctionValue - original.FunctionValue)
+
+	// 生成分析文本
+	var analysis string
+	switch {
+	case convergedChanged:
+		if fixed.Converged {
+			analysis = "修复后算法正确收敛，原始算法未能收敛（由于导数符号错误导致迭代方向偏差）"
+		} else {
+			analysis = "修复后算法去除了原始算法中不合理的强制收敛逻辑，收敛状态更准确反映实际计算结果"
+		}
+	case iterationsDiff != 0:
+		if iterationsDiff < 0 {
+			analysis = fmt.Sprintf("修复后算法效率提升，迭代次数减少 %d 次", -iterationsDiff)
+		} else {
+			analysis = fmt.Sprintf("修复后算法为保证精度增加了 %d 次迭代，收敛判断更加严谨", iterationsDiff)
+		}
+	case solutionDiff > tolerance:
+		analysis = fmt.Sprintf("解的差异显著（%.2e），原始算法因导数符号错误导致解存在偏差", solutionDiff)
+	default:
+		analysis = "两种算法结果一致，修复未改变正确计算场景的结果"
+	}
+
+	return &CompareAnalysis{
+		SolutionDiff:      solutionDiff,
+		IterationsDiff:    iterationsDiff,
+		ConvergedChanged:  convergedChanged,
+		ErrorDiff:         errorDiff,
+		FunctionValueDiff: functionValueDiff,
+		Analysis:          analysis,
+	}
 }
