@@ -1,56 +1,53 @@
-# 科学计算Bug测试项目
+# 科学计算项目
 
-基于规划文档先进设计理念重构的Go科学计算项目，用于AI模型在科学计算领域的质量对比实验。
+基于规划文档先进设计理念重构的Go科学计算项目，提供丰富的科学计算功能。
 
 ## 🎯 项目概述
 
-本项目基于 `solar_terms.py` 科学计算任务，采用**模块化架构设计**，实现了完整的Bug管理系统和科学计算框架。
+本项目基于规划文档中提出的先进设计理念，对原有的科学计算任务重构的Go科学计算项目，采用**模块化架构设计**，实现了丰富的科学计算功能。
 
 ### 🔧 核心改进
 
 1. **模块化架构** - 采用 `cmd/internal/pkg` 分层结构
-2. **Bug系统分离** - 独立的Bug模块，支持扩展
-3. **接口抽象** - 统一的计算器和Bug接口
-4. **完整测试体系** - 单元测试和集成测试
-5. **实验脚本支持** - 自动化实验流程
+2. **接口抽象** - 统一的计算器接口
+3. **完整测试体系** - 单元测试和集成测试
+4. **API设计规范** - RESTful API接口和Swagger文档
 
-## 📊 项目结构（改进后）
+## 📊 项目结构
 
 ```
-scientific_calc_bugs/
+scientific_calc/
 ├── cmd/
 │   └── server/
-│       └── main.go              # 服务入口（重构）
+│       └── main.go              # 服务入口
+├── docs/
+│   ├── docs.go                  # Swagger文档
+│   ├── swagger.json             # Swagger JSON定义
+│   └── swagger.yaml             # Swagger YAML定义
 ├── internal/
 │   ├── api/
-│   │   ├── handler.go           # HTTP处理器（重构）
-│   │   └── dto.go               # 请求响应结构
-│   ├── calculator/
-│   │   ├── solar_term.go        # 节气计算
-│   │   ├── ganzhi.go            # 干支计算
-│   │   ├── astronomy.go         # 天文计算
-│   │   ├── lunar.go             # 农历转换（新增）
-│   │   ├── planet.go            # 行星位置（新增）
-│   │   └── interface.go         # 计算器接口（新增）
-│   ├── bugs/
-│   │   ├── interface.go         # Bug接口（新增）
-│   │   ├── manager.go           # Bug管理器（新增）
-│   │   ├── instability.go       # 结果不稳定性Bug（重构）
-│   │   ├── constraint.go        # 约束越界Bug（重构）
-│   │   └── precision.go         # 精度错误Bug（重构）
-│   └── utils/
-│       ├── math.go              # 数学工具
-│       └── time.go              # 时间工具
-├── pkg/
-│   └── models/
-│       ├── request.go           # 请求结构
-│       └── enums.go             # 枚举定义（新增）
-├── tests/
-│   ├── integration/             # 集成测试（新增）
-│   ├── unit/                    # 单元测试（新增）
-│   └── testdata/                # 测试数据（新增）
-├── scripts/                     # 实验脚本（新增）
-└── docs/                        # 文档
+│   │   └── handler.go           # HTTP处理器
+│   └── calculator/
+│       ├── astronomy.go         # 天文计算
+│       ├── equation_solver.go   # 方程求解器
+│       ├── ganzhi.go            # 干支计算
+│       ├── interface.go         # 计算器接口
+│       ├── lunar.go             # 农历转换
+│       ├── moon_phase.go        # 月相计算
+│       ├── ode_solver.go        # 微分方程求解器
+│       ├── planet.go            # 行星位置计算
+│       ├── solar_term.go        # 节气计算
+│       ├── star.go              # 星曜推算
+│       ├── starting_age.go      # 起运岁数计算
+│       └── sunrise_sunset.go    # 日出日落时间计算
+├── models/
+│   └── request.go               # 请求结构
+├── .gitignore                   # Git忽略文件
+├── go.mod                       # Go模块定义
+├── go.sum                       # Go模块校验和
+├── LICENSE                      # 许可证
+├── README.md                    # 项目说明文档
+└── swag.json                    # Swagger配置
 ```
 
 ## 🔧 核心科学计算任务
@@ -73,37 +70,7 @@ scientific_calc_bugs/
 | 7 | 星曜推算 | 周期计算 | 周期准确性、映射关系 | ✅ 已实现 |
 | 8 | 日出日落时间 | 天文计算 | 时间精度、地理位置 | ✅ 已实现 |
 
-## 🐛 Bug管理系统
 
-### Bug类型枚举
-
-```go
-type BugType int
-
-const (
-    BugTypeNone BugType = iota
-    BugTypeInstability    // 结果不稳定性
-    BugTypeConstraint     // 约束越界
-    BugTypePrecision      // 精度错误
-)
-```
-
-### Bug接口设计
-
-```go
-type Bug interface {
-    Name() string                    // Bug名称
-    Description() string             // Bug描述
-    Apply(calculationType string, params interface{}) (interface{}, []string)
-}
-```
-
-### Bug管理器功能
-
-- **Bug注册管理** - 支持动态注册新的Bug类型
-- **Bug应用控制** - 统一的Bug应用接口
-- **Bug信息查询** - 获取Bug详细信息和修复建议
-- **Bug验证** - 验证Bug应用结果的合理性
 
 ## 🚀 快速开始
 
@@ -134,58 +101,27 @@ go run cmd/server/main.go
 
 ### 📋 API基础说明
 
-本项目提供两种API调用方式：
+本项目提供标准的科学计算API接口，支持多种科学计算任务。
 
-#### 方式1：通过查询参数指定Bug类型（推荐）
+#### 节气计算示例
 ```bash
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "solar_term",
     "params": {
       "year": 2026,
-      "term_index": 2
+      "term_name": "春分"
     }
   }'
 ```
-
-#### 方式2：通过请求体指定Bug类型
-```bash
-curl -X POST "http://localhost:8080/api/calculate-with-bugs" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "calculation": "solar_term",
-    "bug_type": "instability",
-    "params": {
-      "year": 2026,
-      "term_index": 2
-    }
-  }'
-```
-
-**注意**：两种方式等效，推荐使用方式1（查询参数），因为更符合RESTful API设计规范。
-
-**重要说明**：为了确保AI模型修复Bug时不会"作弊"，本项目**只提供带Bug的计算接口**。AI模型必须通过分析Bug代码来修复问题，而不是直接获取标准答案。
 
 ### 🎯 完整的计算类型示例
 
 #### 1. 节气计算 (solar_term)
 ```bash
-# 方式1：使用数字索引（原有方式）
-# 计算2024年春分节气（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "calculation": "solar_term",
-    "params": {
-      "year": 2026,
-      "term_index": 3
-    }
-  }'
-
-# 方式2：使用中文名称（新增方式，推荐）
-# 计算2024年春分节气（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 计算2024年春分节气
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "solar_term",
@@ -195,8 +131,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
     }
   }'
 
-# 计算2024年所有节气（Bug类型：约束越界）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint" \
+# 计算2024年所有节气
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "solar_term",
@@ -208,8 +144,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
 
 #### 2. 干支计算 (ganzhi)
 ```bash
-# 计算2024年2月4日10时的干支（Bug类型：精度错误）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" \
+# 计算2024年2月4日10时的干支
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "ganzhi",
@@ -224,8 +160,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
 
 #### 3. 天文计算 (astronomy)
 ```bash
-# 计算2024年3月20日的太阳黄经（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 计算2024年3月20日的太阳黄经
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "astronomy",
@@ -239,8 +175,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 
 #### 4. 起运岁数计算 (starting_age)
 ```bash
-# 计算1985年6月15日8时出生的起运岁数（Bug类型：约束越界）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint" \
+# 计算1985年6月15日8时出生的起运岁数
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "starting_age",
@@ -255,8 +191,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
 
 #### 5. 农历转换 (lunar)
 ```bash
-# 将2024年3月20日转换为农历（Bug类型：精度错误）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" \
+# 将2024年3月20日转换为农历
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "lunar",
@@ -270,8 +206,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
 
 #### 6. 行星位置计算 (planet)
 ```bash
-# 计算2024年3月20日火星的位置（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 计算2024年3月20日火星的位置
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "planet",
@@ -286,8 +222,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 
 #### 7. 星曜推算 (star)
 ```bash
-# 推算2024年3月20日北斗七星的位置（Bug类型：约束越界）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint" \
+# 推算2024年3月20日北斗七星的位置
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "star",
@@ -302,8 +238,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
 
 #### 8. 日出日落时间计算 (sunrise_sunset)
 ```bash
-# 计算北京（116.4°E, 39.9°N）2024年3月20日的日出日落时间（Bug类型：精度错误）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" \
+# 计算北京（116.4°E, 39.9°N）2024年3月20日的日出日落时间
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "sunrise_sunset",
@@ -319,8 +255,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
 
 #### 9. 月相计算 (moon_phase)
 ```bash
-# 计算2024年3月20日的月相（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 计算2024年3月20日的月相
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "moon_phase",
@@ -334,8 +270,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 
 #### 10. 方程求解器 (equation_solver)
 ```bash
-# 求解非线性方程 x^3 - 2x - 5 = 0（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 求解非线性方程 x^3 - 2x - 5 = 0
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "equation_solver",
@@ -347,8 +283,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
     }
   }'
 
-# 求解线性方程组（Bug类型：约束越界）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint" \
+# 求解线性方程组
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "equation_solver",
@@ -359,8 +295,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
     }
   }'
 
-# 求解微分方程 dy/dt = -y（Bug类型：精度错误）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" \
+# 求解微分方程 dy/dt = -y
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "equation_solver",
@@ -376,8 +312,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
 
 #### 11. 符号计算器 (symbolic_calc)
 ```bash
-# 符号求导 d/dx(x^3 + 2x^2 + x)（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 符号求导 d/dx(x^3 + 2x^2 + x)
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "symbolic_calc",
@@ -388,8 +324,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
     }
   }'
 
-# 表达式化简（Bug类型：约束越界）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint" \
+# 表达式化简
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "symbolic_calc",
@@ -399,8 +335,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
     }
   }'
 
-# 表达式求值（Bug类型：精度错误）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" \
+# 表达式求值
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "symbolic_calc",
@@ -414,8 +350,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
 
 #### 12. 微分方程求解器 (ode_solver)
 ```bash
-# 使用欧拉法求解微分方程（Bug类型：结果不稳定）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 使用欧拉法求解微分方程
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "ode_solver",
@@ -428,8 +364,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
     }
   }'
 
-# 使用龙格-库塔法求解（Bug类型：约束越界）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint" \
+# 使用龙格-库塔法求解
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "ode_solver",
@@ -442,8 +378,8 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=constraint"
     }
   }'
 
-# 使用亚当斯法求解（Bug类型：精度错误）
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" \
+# 使用亚当斯法求解
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "ode_solver",
@@ -458,21 +394,12 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=precision" 
   }'
 ```
 
-### 🐛 Bug管理API
 
-#### 获取Bug信息
-```bash
-# 获取所有Bug类型信息
-curl -X GET "http://localhost:8080/api/bug-info"
-
-# 获取特定Bug类型信息
-curl -X GET "http://localhost:8080/api/bug-info?bug_type=instability"
-```
 
 #### 获取系统信息
 ```bash
 # 获取系统状态和计算器信息
-curl -X GET "http://localhost:8080/api/system-info"
+curl -X GET "http://localhost:8080/api/system-info""
 ```
 
 ### 📊 健康检查
@@ -504,14 +431,7 @@ curl -X GET "http://localhost:8080/api/health"
 }
 ```
 
-3. **Bug类型不支持** (HTTP 400)
-```json
-{
-  "success": false,
-  "error": "不支持的Bug类型: invalid_bug",
-  "code": 400
-}
-```
+
 
 4. **计算失败** (HTTP 400)
 ```json
@@ -531,8 +451,6 @@ curl -X GET "http://localhost:8080/api/health"
     "sun_longitude": 0.0,
     "julian_date": 2459580.5
   },
-  "warnings": ["启用结果不稳定Bug模式"],
-  "bug_type": "instability",
   "calculation": "solar_term",
   "timestamp": "2024-03-24T11:45:00Z"
 }
@@ -615,14 +533,6 @@ curl -X GET "http://localhost:8080/api/health"
 | 10 | 小暑 | 22 | 小寒 |
 | 11 | 大暑 | 23 | 大寒 |
 
-#### Bug类型参数
-| Bug类型 | 查询参数 | 说明 |
-|---------|----------|------|
-| 结果不稳定 | `bug_type=instability` | 计算结果存在随机波动 |
-| 约束越界 | `bug_type=constraint` | 参数或结果超出有效范围 |
-| 精度错误 | `bug_type=precision` | 计算精度不足或错误 |
-| 无Bug | `bug_type=none` 或不指定 | 正确计算结果 |
-
 ### 🚀 快速开始指南
 
 #### 步骤1：启动服务
@@ -639,22 +549,8 @@ go run cmd/server/main.go
 # 检查服务状态
 curl -X GET "http://localhost:8080/api/health"
 
-# 测试节气计算（无Bug模式）- 使用中文名称
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=none" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "calculation": "solar_term",
-    "params": {
-      "year": 2026,
-      "term_name": "春分"
-    }
-  }'
-```
-
-#### 步骤3：测试Bug功能
-```bash
-# 测试结果不稳定Bug - 使用中文名称
-curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability" \
+# 测试节气计算 - 使用中文名称
+curl -X POST "http://localhost:8080/api/calculate" \
   -H "Content-Type: application/json" \
   -d '{
     "calculation": "solar_term",
@@ -671,63 +567,17 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 ### 💡 使用技巧
 
 1. **参数格式灵活**：支持两种参数格式（嵌套params或直接参数）
-2. **Bug类型灵活**：支持查询参数和请求体两种方式指定
-3. **节气参数便捷**：支持数字索引和中文名称两种方式，推荐使用中文名称
-4. **错误信息详细**：所有错误都包含详细的错误信息和修复建议
-5. **Swagger集成**：可通过Web界面直接测试所有API
-6. **中文友好**：节气计算支持24节气的中文名称，无需记忆数字索引
-7. **防作弊设计**：只提供带Bug的计算接口，确保AI模型必须通过分析代码修复问题
+2. **节气参数便捷**：支持数字索引和中文名称两种方式，推荐使用中文名称
+3. **错误信息详细**：所有错误都包含详细的错误信息和修复建议
+4. **Swagger集成**：可通过Web界面直接测试所有API
+5. **中文友好**：节气计算支持24节气的中文名称，无需记忆数字索引
 
 ### 🔗 相关资源
 
-- [AI模型对比实验指南](AI模型对比实验指南.md) - 详细的实验设计指南
 - [Swagger API文档](http://localhost:8080/swagger/index.html) - 完整的API文档
 ```
 
-## 🧪 实验支持
 
-### 自动化测试脚本
-
-```bash
-# 运行结果不稳定性测试
-./scripts/test_instability.sh
-
-# 运行约束越界测试
-./scripts/test_constraint.sh
-
-# 运行精度错误测试
-./scripts/test_precision.sh
-
-# 运行完整实验套件
-./scripts/run_experiment.sh
-```
-
-### 测试用例管理
-
-项目提供完整的测试用例，包括：
-- **单元测试** - 针对每个计算函数的测试
-- **集成测试** - API接口的端到端测试
-- **性能测试** - 计算性能基准测试
-- **Bug验证测试** - Bug效果的验证测试
-
-## 📊 评估指标体系
-
-### Bug修复能力评估（60%权重）
-
-| 指标 | 权重 | 评估标准 |
-|------|------|----------|
-| 结果稳定性 | 30% | 同一输入多次调用结果一致性 |
-| 约束合规性 | 30% | 计算结果在合理范围内 |
-| 精度准确性 | 40% | 与权威数据的误差程度 |
-
-### 代码质量评估（40%权重）
-
-| 指标 | 权重 | 评估标准 |
-|------|------|----------|
-| 可读性 | 25% | 代码结构、注释、命名规范 |
-| 可维护性 | 25% | 模块化设计、错误处理 |
-| 性能优化 | 25% | 计算效率、内存使用 |
-| 测试覆盖 | 25% | 单元测试完整性 |
 
 ## 🔧 开发指南
 
@@ -738,12 +588,7 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 3. 在计算器管理器中注册
 4. 添加相应的单元测试
 
-### 添加新的Bug类型
 
-1. 在 `internal/bugs/` 创建新的Bug文件
-2. 实现 `Bug` 接口
-3. 在Bug管理器中注册
-4. 添加Bug特征描述和修复建议
 
 ### 扩展API接口
 
@@ -757,16 +602,13 @@ curl -X POST "http://localhost:8080/api/calculate-with-bugs?bug_type=instability
 ### 已完成功能
 
 - ✅ 基础项目结构重构
-- ✅ Bug管理系统实现
-- ✅ 核心科学计算任务（4个）
+- ✅ 核心科学计算任务（12个）
 - ✅ API接口和Swagger文档
 - ✅ 基础测试框架
 
 ### 待实现功能
 
-- 🔄 新增科学计算任务（4个）
 - 🔄 完整的测试覆盖
-- 🔄 实验脚本和工具
 - 🔄 性能优化和监控
 
 ## 🔗 相关资源
