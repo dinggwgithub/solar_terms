@@ -152,6 +152,38 @@ func (m *CalculatorManager) CalculateWithSession(calcType CalculationType, param
 	return result, nil, err
 }
 
+// CalculateFixed 执行修复后的计算
+func (m *CalculatorManager) CalculateFixed(calcType CalculationType, params interface{}) (interface{}, []string, error) {
+	// 对于日出日落计算，使用修复后的计算器
+	if calcType == CalculationTypeSunriseSunset {
+		fixedCalculator := NewSunriseSunsetCalculatorFixed()
+		if err := fixedCalculator.Validate(params); err != nil {
+			return nil, nil, fmt.Errorf("参数验证失败: %v", err)
+		}
+		result, err := fixedCalculator.Calculate(params)
+		return result, nil, err
+	}
+
+	// 其他类型使用原计算器
+	return m.Calculate(calcType, params)
+}
+
+// CalculateFixedWithSession 执行修复后的计算（支持会话）
+func (m *CalculatorManager) CalculateFixedWithSession(calcType CalculationType, params interface{}, sessionID string) (interface{}, []string, error) {
+	// 对于日出日落计算，使用修复后的计算器
+	if calcType == CalculationTypeSunriseSunset {
+		fixedCalculator := NewSunriseSunsetCalculatorFixed()
+		if err := fixedCalculator.Validate(params); err != nil {
+			return nil, nil, fmt.Errorf("参数验证失败: %v", err)
+		}
+		result, err := fixedCalculator.Calculate(params)
+		return result, nil, err
+	}
+
+	// 其他类型使用原计算器
+	return m.CalculateWithSession(calcType, params, sessionID)
+}
+
 // GetCalculator 获取指定类型的计算器
 func (m *CalculatorManager) GetCalculator(calcType CalculationType) (Calculator, bool) {
 	calculator, exists := m.calculators[calcType]

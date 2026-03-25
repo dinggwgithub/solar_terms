@@ -589,13 +589,232 @@ curl -X POST "http://localhost:8080/api/calculate" \
 4. 添加相应的单元测试
 
 
-
 ### 扩展API接口
 
 1. 在 `internal/api/handler.go` 添加新的处理器
 2. 定义相应的DTO结构
 3. 更新Swagger文档注释
 4. 添加集成测试
+
+## 🐛 Bug修复说明
+
+### 日出日落时间计算Bug修复
+
+#### Bug现象描述
+
+在调用 `http://localhost:8080/api/calculate` 接口计算北京（116.4°E, 39.9°N）2026年3月23日的日出日落时间时，返回结果存在严重的时间逻辑错误：
+
+**错误返回示例：**
+```json
+{
+  "result": {
+    "sunrise": "18:10",    // 错误：日出时间显示为傍晚
+    "sunset": "06:18",     // 错误：日落时间显示为清晨
+    "solar_noon": "00:14"  // 错误：正午时间显示为午夜
+  }
+}
+```
+
+**问题特征：**
+- 日出日落时间完全颠倒
+- 时间范围完全不符合正常逻辑
+- 晨昏蒙影时间也存在同样的颠倒问题
+
+---
+
+#### 根本原因分析
+
+通过分析 `internal/calculator/sunrise_sunset.go` 代码，发现以下核心问题：
+
+**1. 太阳赤纬值硬编码错误**
+```go
+// 错误代码（第349-351行）：赤纬硬编码为0
+cosH := (math.Sin(h0*math.Pi/180) -
+    math.Sin(latitude*math.Pi/180)*math.Sin(0*math.Pi/180)) /
+    (math.Cos(latitude*math.Pi/180) * math.Cos(0*math.Pi/180))
+```
+- 赤纬（Declination）应该根据日期动态计算
+- 硬编码为0导致时角计算完全错误
+
+**2. 缺少真太阳时修正（时差方程）**
+```go
+// 错误代码（第360-361行）：缺少太阳赤经修正
+sunriseJD := jd + (720-4*(longitude+H)-0)/1440.0
+sunsetJD := jd + (720-4*(longitude-H)-0)/1440.0
+```
+- 公式中的最后一个 `0` 应为太阳赤经修正值
+- 缺少这一修正导致时间计算偏差12小时以上
+
+**3. 太阳正午计算公式错误**
+```go
+// 错误公式
+noonUTC := jd + (longitude*4 - E) / 1440.0
+
+// 正确公式（NOAA标准算法）
+noonMinutesUTC := 720 - 4*longitude - E  // 720分钟=正午12点
+noonUTC := jd + noonMinutesUTC / 1440.0
+```
+- 公式符号错误导致时间偏差4-8小时
+- 是导致日出日落时间整体偏移的根本原因
+
+**4. 儒略日基准转换错误**
+- NOAA算法要求使用午夜基准的儒略日（xxxx.0表示午夜）
+- 计算未正确区分中午基准与午夜基准
+- 时间格式化时儒略日小数部分处理逻辑错误
+
+---
+
+#### 验证方法及效果
+
+**新增接口：**
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/calculate-fixed` | POST | 修复后的日出日落计算接口 |
+| `/api/calculate-compare` | POST | 原接口与修复后接口的结果对比 |
+
+**使用修复接口验证：**
+```bash
+curl -X 'POST' \
+  'http://localhost:8080/api/calculate-fixed' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "calculation": "sunrise_sunset",
+    "params": {
+      "year": 2026,
+      "month": 3,
+      "day": 23,
+      "longitude": 116.4,
+      "latitude": 39.9
+    }
+  }'
+```
+
+**修复后返回结果（示例，2026年3月25日验证）：**
+```json
+{
+  "success": true,
+  "result": {
+    "date": "2026-03-23",
+    "sunrise": "06:14",    // 正确：清晨日出
+    "sunset": "18:28",     // 正确：傍晚日落
+    "solar_noon": "12:21", // 正确：中午正午
+    "day_length": 12.23
+  }
+}
+```
+
+**使用对比接口验证：**
+```bash
+curl -X 'POST' \
+  'http://localhost:8080/api/calculate-compare' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "calculation": "sunrise_sunset",
+    "params": {
+      "year": 2026,
+      "month": 3,
+      "day": 23,
+      "longitude": 116.4,
+      "latitude": 39.9
+    }
+  }'
+```
+
+**对比结果示例：**
+```json
+{
+  "success": true,
+  "differences": {
+    "sunrise": {
+      "original": "18:10",
+      "fixed": "06:14"
+    },
+    "sunset": {
+      "original": "06:18",
+      "fixed": "18:28"
+    },
+    "solar_noon": {
+      "original": "00:14",
+      "fixed": "12:21"
+    }
+  },
+  "summary": "修复了以下问题：[日出时间 日落时间 正午时间]"
+}
+```
+
+---
+
+#### 修复后的算法说明
+
+**修复后的计算器文件：** `internal/calculator/sunrise_sunset_fixed.go`
+
+**采用的算法：** **NOAA日出日落计算方法**（美国国家海洋和大气管理局标准算法）
+
+**算法步骤：**
+
+1. **计算儒略日（Julian Day）**
+   - 正确转换公历日期到儒略日
+   - 基准点为UTC中午12点
+
+2. **计算儒略世纪（Julian Century）**
+   - 以J2000.0历元为基准
+   - 用于后续的太阳位置计算
+
+3. **太阳位置计算**
+   - 太阳几何平黄经（GMLS）
+   - 太阳平近点角（MNAS）
+   - 太阳中心差（Equation of Center）
+   - 太阳真黄经和赤纬
+
+4. **时差方程（Equation of Time）**
+   - 计算真太阳时与平太阳时的差值
+   - 修正地球轨道椭圆和黄赤交角的影响
+
+5. **时角计算（Hour Angle）**
+   - 基于观测者纬度和太阳赤纬
+   - 考虑大气折射修正值（0.8333度）
+   - 支持海拔高度修正
+
+6. **日出日落UTC时间计算**
+   - 太阳正午时间精确计算
+   - 日出 = 正午 - 半昼弧
+   - 日落 = 正午 + 半昼弧
+
+7. **时区转换**
+   - UTC时间转当地时区
+   - 正确处理24小时制的取模运算
+
+**主要修复点（最终版本）：**
+```go
+// 1. 儒略日基准转换：从中午基准转为午夜基准（NOAA算法要求）
+jdMidnight := jd - 0.5  // xxxx.5中午 -> xxxx.0午夜
+
+// 2. 使用动态计算的太阳赤纬
+delta := math.Asin(math.Sin(epsilon*math.Pi/180)*math.Sin(longitudeSun*math.Pi/180)) * 180 / math.Pi
+
+// 3. 实现时差方程修正
+E := (L - alpha) * 4  // 时差（分钟）
+
+// 4. 正确的太阳正午计算（NOAA标准公式）
+noonMinutesUTC := 720 - 4*longitude - E  // 720分钟=正午12点
+noonUTC := jdMidnight + noonMinutesUTC / 1440.0
+
+// 5. 日出日落时间计算
+sunriseUTC := noonUTC - H*4/1440.0  // H为时角（度）
+sunsetUTC := noonUTC + H*4/1440.0
+
+// 6. 正确的时区转换（午夜基准）
+dayFraction := jd - math.Floor(jd)  // .0=午夜, .5=中午
+hoursUTC := dayFraction * 24        // UTC小时
+hours := hoursUTC + timezone        // 当地时间
+```
+
+**参考文献：**
+- NOAA Solar Calculator: https://www.esrl.noaa.gov/gmd/grad/solcalc/
+- Astronomical Algorithms by Jean Meeus (第2版)
+
+---
 
 ## 📋 项目状态
 
@@ -605,6 +824,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
 - ✅ 核心科学计算任务（12个）
 - ✅ API接口和Swagger文档
 - ✅ 基础测试框架
+- ✅ 日出日落时间Bug修复（2026-03-25）
 
 ### 待实现功能
 
