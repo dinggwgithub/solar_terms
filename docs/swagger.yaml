@@ -23,6 +23,21 @@ definitions:
       name:
         type: string
     type: object
+  api.DifferenceDetail:
+    properties:
+      expected_value:
+        description: 预期值
+      field:
+        description: 字段名
+        type: string
+      fixed_value:
+        description: 修复值
+      original_value:
+        description: 原值
+      status:
+        description: '状态: "fixed", "still_wrong", "unchanged"'
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -46,6 +61,49 @@ definitions:
       version:
         example: 1.0.0
         type: string
+    type: object
+  api.SymbolicCompareResponse:
+    properties:
+      differences:
+        description: 差异详情
+        items:
+          $ref: '#/definitions/api.DifferenceDetail'
+        type: array
+      expected:
+        description: 预期正确结果
+        type: string
+      fixed:
+        description: 修复版计算结果
+      is_fixed:
+        description: 是否已修复
+        type: boolean
+      original:
+        description: 原版计算结果
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
+  api.SymbolicFixedResponse:
+    properties:
+      calculation:
+        type: string
+      fixed:
+        description: 标记为修复版本
+        type: boolean
+      result: {}
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
     type: object
   api.SystemInfoResponse:
     properties:
@@ -135,6 +193,39 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: '执行修复后的符号计算，支持正确的表达式解析、符号求导和表达式化简。支持两种请求格式：格式1 (直接参数): {"operation":
+        "differentiate", "expression": "x^3", "variable": "x"}；格式2 (嵌套params): {"calculation":
+        "symbolic_calc", "params": {"operation": "differentiate", "expression": "x^3",
+        "variable": "x"}}'
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 符号计算请求参数（支持直接参数或嵌套params格式）
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SymbolicFixedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复版符号计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +267,39 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: '对比原版和修复版符号计算的结果差异，用于验证修复效果。支持两种请求格式：格式1 (直接参数): {"operation":
+        "differentiate", "expression": "x^3", "variable": "x"}；格式2 (嵌套params): {"calculation":
+        "symbolic_calc", "params": {"operation": "differentiate", "expression": "x^3",
+        "variable": "x"}}'
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 符号计算对比请求参数（支持直接参数或嵌套params格式）
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SymbolicCompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比修复前后的符号计算结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:
