@@ -55,6 +55,47 @@
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "使用修复后的算法求解微分方程，确保时间点均匀、导数路径完整、误差估计准确",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "修复版微分方程求解",
+                "parameters": [
+                    {
+                        "description": "ODE求解参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ODEFixedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -111,6 +152,46 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "同时运行原始和修复后的求解器，返回详细对比结果",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比原始和修复后的ODE求解器",
+                "parameters": [
+                    {
+                        "description": "对比请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ODECompareRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ODECompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -211,6 +292,105 @@
                 }
             }
         },
+        "api.ODECompareRequest": {
+            "type": "object",
+            "required": [
+                "fixed_request",
+                "original_request"
+            ],
+            "properties": {
+                "fixed_request": {},
+                "original_request": {}
+            }
+        },
+        "api.ODECompareResponse": {
+            "type": "object",
+            "properties": {
+                "differences": {
+                    "$ref": "#/definitions/api.ODEDifferences"
+                },
+                "fixed_result": {
+                    "$ref": "#/definitions/calculator.ODEResultFixed"
+                },
+                "original_result": {
+                    "$ref": "#/definitions/calculator.ODEResult"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ODEDifferences": {
+            "type": "object",
+            "properties": {
+                "derivative_path_match": {
+                    "type": "boolean"
+                },
+                "error_estimate_diff": {
+                    "type": "number"
+                },
+                "final_value_diff": {
+                    "type": "number"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "solution_path_diff": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "solution_path_match": {
+                    "type": "boolean"
+                },
+                "time_points_diff": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "time_points_match": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.ODEFixedResponse": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/calculator.ODEResultFixed"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "version": {
+                    "description": "标识修复版本",
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "api.SystemInfoResponse": {
             "type": "object",
             "properties": {
@@ -225,6 +405,90 @@
                 },
                 "version": {
                     "type": "string"
+                }
+            }
+        },
+        "calculator.ODEResult": {
+            "type": "object",
+            "properties": {
+                "derivative_path": {
+                    "description": "导数路径（二阶方程）",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "error_estimate": {
+                    "description": "误差估计",
+                    "type": "number"
+                },
+                "method_used": {
+                    "description": "使用的求解方法",
+                    "type": "string"
+                },
+                "solution": {
+                    "description": "最终解",
+                    "type": "number"
+                },
+                "solution_path": {
+                    "description": "解路径",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "stability": {
+                    "description": "数值稳定性",
+                    "type": "string"
+                },
+                "time_points": {
+                    "description": "时间点序列",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "calculator.ODEResultFixed": {
+            "type": "object",
+            "properties": {
+                "derivative_path": {
+                    "description": "导数路径",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "error_estimate": {
+                    "description": "误差估计（与精确解对比）",
+                    "type": "number"
+                },
+                "method_used": {
+                    "description": "使用的求解方法",
+                    "type": "string"
+                },
+                "solution": {
+                    "description": "最终解",
+                    "type": "number"
+                },
+                "solution_path": {
+                    "description": "解路径",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "stability": {
+                    "description": "数值稳定性",
+                    "type": "string"
+                },
+                "time_points": {
+                    "description": "时间点序列",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
                 }
             }
         },
