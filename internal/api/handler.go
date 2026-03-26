@@ -221,17 +221,15 @@ func (h *APIHandler) sendError(c *gin.Context, code int, message string) {
 
 // RegisterRoutes 注册API路由
 func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
-	// 系统接口
 	router.GET("/api/health", h.HealthCheck)
 	router.GET("/api/system-info", h.GetSystemInfo)
 
-	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+	router.POST("/api/solver/compare", h.CompareSolvers)
 
-	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
-	// 支持接口
 	router.GET("/api/supported-calculations", h.GetSupportedCalculations)
 }
 
