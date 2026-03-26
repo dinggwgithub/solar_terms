@@ -10,6 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// SolverCompareResponse 求解器对比响应
+type SolverCompareResponse struct {
+	Comparison *calculator.ComparisonResult `json:"comparison"`
+	Analysis   *calculator.CompareAnalysis  `json:"analysis"`
+}
+
 // GenerateSessionID 生成会话ID
 func GenerateSessionID() string {
 	rand.Seed(time.Now().UnixNano())
@@ -228,6 +234,10 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// 修复版方程求解器接口
+	router.POST("/api/solver/v2", h.SolverV2)
+	router.POST("/api/solver/compare", h.CompareSolvers)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
@@ -255,4 +265,88 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 		"calculations": calculations,
 		"total":        len(calculations),
 	})
+}
+
+// SolverV2 修复版方程求解器接口
+// @Summary 修复版方程求解器
+// @Description 使用修复后算法的方程求解器接口（V2版本）
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/v2 [post]
+func (h *APIHandler) SolverV2(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// V2接口固定使用equation_solver类型
+	calcType := calculator.CalculationTypeEquationSolver
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 执行计算
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "equation_solver_v2", sessionID)
+}
+
+// CompareSolvers 求解器对比接口
+// @Summary 求解器对比接口
+// @Description 对比原始算法和修复后算法的求解结果
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} SolverCompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareSolvers(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 获取方程求解器
+	calcType := calculator.CalculationTypeEquationSolver
+	calc, exists := h.calculatorManager.GetCalculator(calcType)
+	if !exists {
+		h.sendError(c, http.StatusBadRequest, "方程求解器未注册")
+		return
+	}
+
+	// 转换为具体类型以调用CompareSolvers方法
+	equationSolver, ok := calc.(*calculator.EquationSolverCalculator)
+	if !ok {
+		h.sendError(c, http.StatusInternalServerError, "计算器类型转换失败")
+		return
+	}
+
+	// 执行对比
+	comparison, analysis, err := equationSolver.CompareSolvers(req.GetParams())
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "对比计算失败: "+err.Error())
+		return
+	}
+
+	response := SolverCompareResponse{
+		Comparison: comparison,
+		Analysis:   analysis,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
