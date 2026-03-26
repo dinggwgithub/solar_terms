@@ -23,6 +23,26 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareRequest:
+    properties:
+      fixed:
+        $ref: '#/definitions/models.CalculationRequest'
+      original:
+        $ref: '#/definitions/models.CalculationRequest'
+    required:
+    - fixed
+    - original
+    type: object
+  api.CompareResponse:
+    properties:
+      difference: {}
+      fixed_result: {}
+      original_result: {}
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -135,6 +155,36 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行各种类型的科学计算（修复版，用于对比测试）
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行科学计算（修复版）
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +226,32 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比修复前后微分方程求解器的计算结果差异
+      parameters:
+      - description: 对比请求参数（包含原始请求和修复后请求）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CompareRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比修复前后求解器结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:
