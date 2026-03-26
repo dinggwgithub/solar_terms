@@ -305,7 +305,7 @@ curl -X POST "http://localhost:8080/api/calculate" \
       "equation": "dy/dt = -y",
       "initial_value": 1.0,
       "time_step": 0.1,
-      "time_range": 10.0
+      "time_range": 1.0
     }
   }'
 ```

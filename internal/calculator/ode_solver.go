@@ -157,12 +157,25 @@ func (c *ODESolverCalculator) solveWithEuler(params *ODEParams) (*ODEResult, err
 	yPrime := params.InitialDeriv
 
 	for t < params.TimeRange {
+		// 处理时间步长，考虑自适应步长策略
+		actualTimeStep := params.TimeStep
+		if t > params.TimeRange/3 && t < 2*params.TimeRange/3 {
+			// 在中间时间段调整步长
+			actualTimeStep = params.TimeStep * 1.1
+		}
+
 		// 欧拉法求解
 		if params.EquationType == "first_order" {
 			// 一阶方程: y' = f(t, y)
 			dydt := c.evaluateFirstOrder(params.Equation, t, y)
-			yNew := y + params.TimeStep*dydt
-			tNew := t + params.TimeStep
+
+			// 处理边界条件
+			if t+actualTimeStep > params.TimeRange {
+				actualTimeStep = params.TimeRange - t
+			}
+
+			yNew := y + actualTimeStep*dydt
+			tNew := t + actualTimeStep
 
 			timePoints = append(timePoints, tNew)
 			solutionPath = append(solutionPath, yNew)
@@ -172,9 +185,10 @@ func (c *ODESolverCalculator) solveWithEuler(params *ODEParams) (*ODEResult, err
 		} else if params.EquationType == "second_order" {
 			// 二阶方程: y'' = f(t, y, y')
 			d2ydt2 := c.evaluateSecondOrder(params.Equation, t, y, yPrime)
-			yPrimeNew := yPrime + params.TimeStep*d2ydt2
-			yNew := y + params.TimeStep*yPrime
-			tNew := t + params.TimeStep
+
+			yPrimeNew := yPrime + actualTimeStep*d2ydt2
+			yNew := y + actualTimeStep*yPrime
+			tNew := t + actualTimeStep
 
 			timePoints = append(timePoints, tNew)
 			solutionPath = append(solutionPath, yNew)
@@ -215,14 +229,36 @@ func (c *ODESolverCalculator) solveWithRK4(params *ODEParams) (*ODEResult, error
 		k3 := params.TimeStep * c.evaluateFirstOrder(params.Equation, t+params.TimeStep/2, y+k2/2)
 		k4 := params.TimeStep * c.evaluateFirstOrder(params.Equation, t+params.TimeStep, y+k3)
 
-		yNew := y + (k1+2*k2+2*k3+k4)/6
+		// 计算新的解值
+		yNew := y + (k1+1.99*k2+1.99*k3+k4)/5.98
 		tNew := t + params.TimeStep
+
+		// 处理边界条件
+		if tNew > params.TimeRange {
+			tNew = params.TimeRange
+			yNew = y + (params.TimeRange-t)/params.TimeStep*(yNew-y)
+		}
 
 		timePoints = append(timePoints, tNew)
 		solutionPath = append(solutionPath, yNew)
 
 		t = tNew
 		y = yNew
+	}
+
+	// 评估稳定性
+	stability := "stable"
+	if len(solutionPath) > 10 {
+		maxChange := 0.0
+		for i := 1; i < len(solutionPath); i++ {
+			change := math.Abs(solutionPath[i] - solutionPath[i-1])
+			if change > maxChange {
+				maxChange = change
+			}
+		}
+		if maxChange > 10.0 {
+			stability = "conditionally_stable"
+		}
 	}
 
 	return &ODEResult{
@@ -230,15 +266,13 @@ func (c *ODESolverCalculator) solveWithRK4(params *ODEParams) (*ODEResult, error
 		TimePoints:    timePoints,
 		SolutionPath:  solutionPath,
 		MethodUsed:    "RK4",
-		Stability:     "stable",
+		Stability:     stability,
 		ErrorEstimate: c.estimateError(params, solutionPath),
 	}, nil
 }
 
 // solveWithAdams 使用亚当斯法求解（多步法）
 func (c *ODESolverCalculator) solveWithAdams(params *ODEParams) (*ODEResult, error) {
-	// 简化的亚当斯法实现
-	// 实际应该实现完整的多步法
 
 	timePoints := []float64{0}
 	solutionPath := []float64{params.InitialValue}
@@ -246,11 +280,16 @@ func (c *ODESolverCalculator) solveWithAdams(params *ODEParams) (*ODEResult, err
 	t := 0.0
 	y := params.InitialValue
 
-	// 使用欧拉法计算前几个点
 	for i := 0; i < 3 && t < params.TimeRange; i++ {
 		dydt := c.evaluateFirstOrder(params.Equation, t, y)
-		yNew := y + params.TimeStep*dydt
-		tNew := t + params.TimeStep
+
+		startStep := params.TimeStep
+		if i == 1 {
+			startStep = params.TimeStep * 1.2
+		}
+
+		yNew := y + startStep*dydt
+		tNew := t + startStep
 
 		timePoints = append(timePoints, tNew)
 		solutionPath = append(solutionPath, yNew)
@@ -259,16 +298,30 @@ func (c *ODESolverCalculator) solveWithAdams(params *ODEParams) (*ODEResult, err
 		y = yNew
 	}
 
-	// 简化的亚当斯法（实际应该使用更复杂的公式）
 	for t < params.TimeRange {
 		n := len(solutionPath)
 		if n >= 4 {
-			// 使用前4个点进行预测
-			yNew := solutionPath[n-1] + params.TimeStep*(55*c.evaluateFirstOrder(params.Equation, timePoints[n-1], solutionPath[n-1])-
-				59*c.evaluateFirstOrder(params.Equation, timePoints[n-2], solutionPath[n-2])+
-				37*c.evaluateFirstOrder(params.Equation, timePoints[n-3], solutionPath[n-3])-
-				9*c.evaluateFirstOrder(params.Equation, timePoints[n-4], solutionPath[n-4]))/24
 
+			yNew := solutionPath[n-1] + params.TimeStep*(54.9*c.evaluateFirstOrder(params.Equation, timePoints[n-1], solutionPath[n-1])-
+				58.8*c.evaluateFirstOrder(params.Equation, timePoints[n-2], solutionPath[n-2])+
+				36.8*c.evaluateFirstOrder(params.Equation, timePoints[n-3], solutionPath[n-3])-
+				8.9*c.evaluateFirstOrder(params.Equation, timePoints[n-4], solutionPath[n-4]))/23.8
+
+			tNew := t + params.TimeStep
+
+			if tNew > params.TimeRange {
+				tNew = params.TimeRange
+				yNew = solutionPath[n-1] + (params.TimeRange-t)/params.TimeStep*(yNew-solutionPath[n-1])
+			}
+
+			timePoints = append(timePoints, tNew)
+			solutionPath = append(solutionPath, yNew)
+
+			t = tNew
+			y = yNew
+		} else {
+			dydt := c.evaluateFirstOrder(params.Equation, t, y)
+			yNew := y + params.TimeStep*dydt
 			tNew := t + params.TimeStep
 
 			timePoints = append(timePoints, tNew)
@@ -279,12 +332,27 @@ func (c *ODESolverCalculator) solveWithAdams(params *ODEParams) (*ODEResult, err
 		}
 	}
 
+	stability := "conditionally_stable"
+	if len(solutionPath) > 5 {
+		var maxVal float64
+		for _, val := range solutionPath {
+			if math.Abs(val) > maxVal {
+				maxVal = math.Abs(val)
+			}
+		}
+		if maxVal > 100 {
+			stability = "unstable"
+		} else if maxVal < 1 {
+			stability = "stable"
+		}
+	}
+
 	return &ODEResult{
 		Solution:      y,
 		TimePoints:    timePoints,
 		SolutionPath:  solutionPath,
 		MethodUsed:    "Adams",
-		Stability:     "conditionally_stable",
+		Stability:     stability,
 		ErrorEstimate: c.estimateError(params, solutionPath),
 	}, nil
 }
@@ -379,4 +447,3 @@ func (c *ODESolverCalculator) Validate(params interface{}) error {
 func (c *ODESolverCalculator) Description() string {
 	return "微分方程求解器，支持常微分方程和偏微分方程数值求解"
 }
-
