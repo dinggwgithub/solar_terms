@@ -1,34 +1,34 @@
 package models
 
-// CalculationRequest 璁＄畻璇锋眰缁撴瀯浣?
-// 鏀寔涓ょ鍙傛暟鏍煎紡锛?
-// 鏍煎紡1: {"calculation": "solar_term", "params": {"year": 2024, "term_index": 2}}
-// 鏍煎紡2: {"calculation": "solar_term", "year": 2024, "term_index": 2}
+// CalculationRequest 计算请求结构体
+// 支持两种参数格式：
+// 格式1: {"calculation": "solar_term", "params": {"year": 2024, "term_index": 2}}
+// 格式2: {"calculation": "solar_term", "year": 2024, "term_index": 2}
 type CalculationRequest struct {
-	Calculation string      `json:"calculation" binding:"required"` // 璁＄畻绫诲瀷
-	Params      interface{} `json:"params"`                         // 璁＄畻鍙傛暟锛堟牸寮?锛?
+	Calculation string      `json:"calculation" binding:"required" example:"equation_solver"` // 计算类型
+	Params      interface{} `json:"params"`                                                   // 计算参数（格式1）
 
-	// 鐩存帴鍙傛暟锛堟牸寮?锛?
-	Year            int     `json:"year"`             // 骞翠唤
-	Month           int     `json:"month"`            // 鏈堜唤
-	Day             int     `json:"day"`              // 鏃ユ湡
-	Hour            int     `json:"hour"`             // 灏忔椂
-	Minute          int     `json:"minute"`           // 鍒嗛挓
-	Second          int     `json:"second"`           // 绉?
-	TermIndex       int     `json:"term_index"`       // 鑺傛皵绱㈠紩 (0-23)
-	SolarDate       string  `json:"solar_date"`       // 闃冲巻鏃ユ湡
-	DaysFromTerm    int     `json:"days_from_term"`   // 璺濊妭姘斿ぉ鏁?
-	TargetLongitude float64 `json:"target_longitude"` // 鐩爣榛勭粡
+	// 直接参数（格式2）
+	Year            int     `json:"year"`             // 年份
+	Month           int     `json:"month"`            // 月份
+	Day             int     `json:"day"`              // 日期
+	Hour            int     `json:"hour"`             // 小时
+	Minute          int     `json:"minute"`           // 分钟
+	Second          int     `json:"second"`           // 秒
+	TermIndex       int     `json:"term_index"`       // 节气索引 (0-23)
+	SolarDate       string  `json:"solar_date"`       // 阳历日期
+	DaysFromTerm    int     `json:"days_from_term"`   // 距节气天数
+	TargetLongitude float64 `json:"target_longitude"` // 目标黄经
 }
 
-// GetParams 鑾峰彇璁＄畻鍙傛暟锛堟敮鎸佷袱绉嶆牸寮忥級
+// GetParams 获取计算参数（支持两种格式）
 func (r *CalculationRequest) GetParams() interface{} {
-	// 濡傛灉鎻愪緵浜哖arams瀛楁锛屼紭鍏堜娇鐢?
+	// 如果提供了Params字段，优先使用
 	if r.Params != nil {
 		return r.Params
 	}
 
-	// 鍚﹀垯浣跨敤鐩存帴鍙傛暟鏋勫缓鍙傛暟map
+	// 否则使用直接参数构建参数map
 	params := make(map[string]interface{})
 
 	if r.Year != 0 {
@@ -65,95 +65,129 @@ func (r *CalculationRequest) GetParams() interface{} {
 	return params
 }
 
-// CalculationResult 璁＄畻缁撴灉缁撴瀯浣?
+// CalculationResult 计算结果结构体
 type CalculationResult struct {
-	SolarTermTime  string       `json:"solar_term_time"` // 鑺傛皵绮剧‘鏃堕棿
-	SunLongitude   float64      `json:"sun_longitude"`   // 澶槼榛勭粡
-	JulianDate     float64      `json:"julian_date"`     // 鍎掔暐鏃?
-	GanZhi         GanZhiResult `json:"gan_zhi"`         // 骞叉敮缁撴灉
-	StartingAge    string       `json:"starting_age"`    // 璧疯繍宀佹暟
-	TermDate       int          `json:"term_date"`       // 鑺傛皵鏃ユ湡
-	Iterations     int          `json:"iterations"`      // 杩唬娆℃暟
-	Converged      bool         `json:"converged"`       // 鏄惁鏀舵暃
-	PrecisionError float64      `json:"precision_error"` // 绮惧害璇樊
+	SolarTermTime  string       `json:"solar_term_time"` // 节气精确时间
+	SunLongitude   float64      `json:"sun_longitude"`   // 太阳黄经
+	JulianDate     float64      `json:"julian_date"`     // 儒略日
+	GanZhi         GanZhiResult `json:"gan_zhi"`         // 干支结果
+	StartingAge    string       `json:"starting_age"`    // 起运岁数
+	TermDate       int          `json:"term_date"`       // 节气日期
+	Iterations     int          `json:"iterations"`      // 迭代次数
+	Converged      bool         `json:"converged"`       // 是否收敛
+	PrecisionError float64      `json:"precision_error"` // 精度误差
 }
 
-// GanZhiResult 骞叉敮璁＄畻缁撴灉
+// GanZhiResult 干支计算结果
 type GanZhiResult struct {
-	GanYear  string `json:"gan_year"`  // 骞村ぉ骞?
-	ZhiYear  string `json:"zhi_year"`  // 骞村湴鏀?
-	GanMonth string `json:"gan_month"` // 鏈堝ぉ骞?
-	ZhiMonth string `json:"zhi_month"` // 鏈堝湴鏀?
-	GanDay   string `json:"gan_day"`   // 鏃ュぉ骞?
-	ZhiDay   string `json:"zhi_day"`   // 鏃ュ湴鏀?
-	GanTime  string `json:"gan_time"`  // 鏃跺ぉ骞?
-	ZhiTime  string `json:"zhi_time"`  // 鏃跺湴鏀?
+	GanYear  string `json:"gan_year"`  // 年天干
+	ZhiYear  string `json:"zhi_year"`  // 年地支
+	GanMonth string `json:"gan_month"` // 月天干
+	ZhiMonth string `json:"zhi_month"` // 月地支
+	GanDay   string `json:"gan_day"`   // 日天干
+	ZhiDay   string `json:"zhi_day"`   // 日地支
+	GanTime  string `json:"gan_time"`  // 时天干
+	ZhiTime  string `json:"zhi_time"`  // 时地支
 }
 
-// AstronomyResult 澶╂枃璁＄畻缁撴灉
+// AstronomyResult 天文计算结果
 type AstronomyResult struct {
-	SunLongitude      float64 `json:"sun_longitude"`      // 澶槼榛勭粡
-	JulianDate        float64 `json:"julian_date"`        // 鍎掔暐鏃?
-	ApparentLongitude float64 `json:"apparent_longitude"` // 瑙嗛粍缁?
-	TrueLongitude     float64 `json:"true_longitude"`     // 鐪熼粍缁?
-	MeanLongitude     float64 `json:"mean_longitude"`     // 骞抽粍缁?
-	MeanAnomaly       float64 `json:"mean_anomaly"`       // 骞宠繎鐐硅
-	EquationOfCenter  float64 `json:"equation_of_center"` // 涓績宸?
-	Nutation          float64 `json:"nutation"`           // 绔犲姩
+	SunLongitude      float64 `json:"sun_longitude"`      // 太阳黄经
+	JulianDate        float64 `json:"julian_date"`        // 儒略日
+	ApparentLongitude float64 `json:"apparent_longitude"` // 视黄经
+	TrueLongitude     float64 `json:"true_longitude"`     // 真黄经
+	MeanLongitude     float64 `json:"mean_longitude"`     // 平黄经
+	MeanAnomaly       float64 `json:"mean_anomaly"`       // 平近点角
+	EquationOfCenter  float64 `json:"equation_of_center"` // 中心差
+	Nutation          float64 `json:"nutation"`           // 章动
 }
 
-// LunarDate 鍐滃巻鏃ユ湡缁撴瀯
+// LunarDate 农历日期结构
 type LunarDate struct {
-	LunarYear   int    `json:"lunar_year"`   // 鍐滃巻骞?
-	LunarMonth  int    `json:"lunar_month"`  // 鍐滃巻鏈堬紙1-12锛?
-	LunarDay    int    `json:"lunar_day"`    // 鍐滃巻鏃ワ紙1-30锛?
-	IsLeap      bool   `json:"is_leap"`      // 鏄惁涓洪棸鏈?
-	LunarString string `json:"lunar_string"` // 鍐滃巻鏃ユ湡瀛楃涓?
+	LunarYear   int    `json:"lunar_year"`   // 农历年
+	LunarMonth  int    `json:"lunar_month"`  // 农历月（1-12）
+	LunarDay    int    `json:"lunar_day"`    // 农历日（1-30）
+	IsLeap      bool   `json:"is_leap"`      // 是否为闰月
+	LunarString string `json:"lunar_string"` // 农历日期字符串
 }
 
-// PlanetPosition 琛屾槦浣嶇疆缁撴灉
+// PlanetPosition 行星位置结果
 type PlanetPosition struct {
-	RightAscension float64 `json:"right_ascension"` // 璧ょ粡锛堝皬鏃讹級
-	Declination    float64 `json:"declination"`     // 璧ょ含锛堝害锛?
-	Distance       float64 `json:"distance"`        // 璺濈锛堝ぉ鏂囧崟浣嶏級
-	Magnitude      float64 `json:"magnitude"`       // 鏄熺瓑
-	Phase          float64 `json:"phase"`           // 鐩镐綅锛?-1锛?
-	Elongation     float64 `json:"elongation"`      // 璺濊锛堝害锛?
+	RightAscension float64 `json:"right_ascension"` // 赤经（小时）
+	Declination    float64 `json:"declination"`     // 赤纬（度）
+	Distance       float64 `json:"distance"`        // 距离（天文单位）
+	Magnitude      float64 `json:"magnitude"`       // 星等
+	Phase          float64 `json:"phase"`           // 相位（0-1）
+	Elongation     float64 `json:"elongation"`      // 距角（度）
 }
 
-// StarConstellation 鏄熸洔鎺ㄧ畻缁撴灉
+// StarConstellation 星曜推算结果
 type StarConstellation struct {
-	Constellation  string  `json:"constellation"`   // 鏄熷骇
-	RightAscension float64 `json:"right_ascension"` // 璧ょ粡
-	Declination    float64 `json:"declination"`     // 璧ょ含
-	Magnitude      float64 `json:"magnitude"`       // 鏄熺瓑
-	Visibility     string  `json:"visibility"`      // 鍙鎬?
+	Constellation  string  `json:"constellation"`   // 星座
+	RightAscension float64 `json:"right_ascension"` // 赤经
+	Declination    float64 `json:"declination"`     // 赤纬
+	Magnitude      float64 `json:"magnitude"`       // 星等
+	Visibility     string  `json:"visibility"`      // 可见性
 }
 
-// SunriseSunsetResult 鏃ュ嚭鏃ヨ惤鏃堕棿缁撴灉
+// SunriseSunsetResult 日出日落时间结果
 type SunriseSunsetResult struct {
-	Sunrise            string `json:"sunrise"`              // 鏃ュ嚭鏃堕棿
-	Sunset             string `json:"sunset"`               // 鏃ヨ惤鏃堕棿
-	DayLength          string `json:"day_length"`           // 鐧芥樇鏃堕暱
-	SolarNoon          string `json:"solar_noon"`           // 姝ｅ崍鏃堕棿
-	CivilTwilightBegin string `json:"civil_twilight_begin"` // 姘戠敤鏅ㄥ厜寮€濮?
-	CivilTwilightEnd   string `json:"civil_twilight_end"`   // 姘戠敤鏅ㄥ厜缁撴潫
+	Sunrise            string `json:"sunrise"`              // 日出时间
+	Sunset             string `json:"sunset"`               // 日落时间
+	DayLength          string `json:"day_length"`           // 白昼时长
+	SolarNoon          string `json:"solar_noon"`           // 正午时间
+	CivilTwilightBegin string `json:"civil_twilight_begin"` // 民用晨光开始
+	CivilTwilightEnd   string `json:"civil_twilight_end"`   // 民用晨光结束
 }
 
-// MoonPhaseResult 鏈堢浉璁＄畻缁撴灉
+// MoonPhaseResult 月相计算结果
 type MoonPhaseResult struct {
-	Phase        string  `json:"phase"`          // 鏈堢浉绫诲瀷
-	Illumination float64 `json:"illumination"`   // 鍏夌収姣斾緥
-	Age          float64 `json:"age"`            // 鏈堥緞锛堝ぉ锛?
-	NextNewMoon  string  `json:"next_new_moon"`  // 涓嬫鏂版湀鏃堕棿
-	NextFullMoon string  `json:"next_full_moon"` // 涓嬫婊℃湀鏃堕棿
+	Phase        string  `json:"phase"`          // 月相类型
+	Illumination float64 `json:"illumination"`   // 光照比例
+	Age          float64 `json:"age"`            // 月龄（天）
+	NextNewMoon  string  `json:"next_new_moon"`  // 下次新月时间
+	NextFullMoon string  `json:"next_full_moon"` // 下次满月时间
 }
 
-// StartingAgeResult 璧疯繍宀佹暟缁撴灉
+// StartingAgeResult 起运岁数结果
 type StartingAgeResult struct {
-	StartingAge     string                   `json:"starting_age"`     // 璧疯繍骞撮緞
-	Gender          string                   `json:"gender"`           // 鎬у埆
-	BirthBazi       string                   `json:"birth_bazi"`       // 鐢熻景鍏瓧
-	MajorCycles     []map[string]interface{} `json:"major_cycles"`     // 澶ц繍鍛ㄦ湡
-	CalculationDate string                   `json:"calculation_date"` // 璁＄畻鏃堕棿
+	StartingAge     string                   `json:"starting_age"`     // 起运年齢
+	Gender          string                   `json:"gender"`           // 性别
+	BirthBazi       string                   `json:"birth_bazi"`       // 生辰八字
+	MajorCycles     []map[string]interface{} `json:"major_cycles"`     // 大运周期
+	CalculationDate string                   `json:"calculation_date"` // 计算时间
+}
+
+// EquationSolverParams 方程求解参数
+type EquationSolverParams struct {
+	EquationType  string    `json:"equation_type" example:"ode"`  // 方程类型：nonlinear, linear, ode
+	Equation      string    `json:"equation" example:"dy/dt = -y"` // 方程表达式
+	InitialValue  float64   `json:"initial_value" example:"1.0"`   // 初始值
+	InitialGuess  float64   `json:"initial_guess"`                  // 初始猜测值（非线性方程）
+	Tolerance     float64   `json:"tolerance" example:"1e-6"`      // 容差
+	MaxIterations int       `json:"max_iterations" example:"100"`  // 最大迭代次数
+	Coefficients  []float64 `json:"coefficients"`                   // 系数（线性方程组）
+	TimeStep      float64   `json:"time_step" example:"0.1"`       // 时间步长（微分方程）
+	TimeRange     float64   `json:"time_range" example:"1.0"`      // 时间范围（微分方程）
+	Method        string    `json:"method" example:"euler"`        // 求解方法：euler, rk4, rk45
+}
+
+// EquationSolverResult 方程求解结果
+type EquationSolverResult struct {
+	Solution       interface{} `json:"solution"`                  // 解
+	Iterations     int         `json:"iterations"`                // 迭代次数
+	Converged      bool        `json:"converged"`                 // 是否收敛
+	Error          float64     `json:"error"`                     // 误差
+	ErrorEstimate  float64     `json:"error_estimate"`            // 误差估计
+	FunctionValue  float64     `json:"function_value"`            // 函数值
+	Jacobian       [][]float64 `json:"jacobian,omitempty"`        // 雅可比矩阵
+	TimePoints     []float64   `json:"time_points,omitempty"`     // 时间点
+	SolutionPath   []float64   `json:"solution_path,omitempty"`   // 解路径
+	MethodUsed     string      `json:"method_used,omitempty"`     // 使用的方法
+	Stability      string      `json:"stability,omitempty"`       // 稳定性
+	GlobalError    float64     `json:"global_error,omitempty"`    // 全局误差
+	LocalError     float64     `json:"local_error,omitempty"`     // 局部误差
+	Analytical     float64     `json:"analytical,omitempty"`      // 解析解
+	AbsoluteError  float64     `json:"absolute_error,omitempty"`  // 绝对误差
+	RelativeError  float64     `json:"relative_error,omitempty"`  // 相对误差
 }

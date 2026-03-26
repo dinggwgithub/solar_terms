@@ -11,7 +11,7 @@
     "paths": {
         "/api/calculate": {
             "post": {
-                "description": "执行各种类型的科学计算",
+                "description": "执行各种类型的科学计算（原始版本）",
                 "consumes": [
                     "application/json"
                 ],
@@ -22,6 +22,52 @@
                     "科学计算"
                 ],
                 "summary": "执行科学计算",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行各种类型的科学计算（修复版），修正了ODE求解器的数值计算错误，返回严格符合数学要求的计算结果",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行科学计算（修复版）",
                 "parameters": [
                     {
                         "type": "string",
@@ -71,7 +117,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "计算类型: solar_term, ganzhi, astronomy, starting_age, lunar, planet, star, sunrise_sunset, moon_phase",
+                        "description": "计算类型: solar_term, ganzhi, astronomy, starting_age, lunar, planet, star, sunrise_sunset, moon_phase, equation_solver",
                         "name": "calculation",
                         "in": "query",
                         "required": true
@@ -111,6 +157,70 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "同时执行原始版和修复版计算，返回字段级的差异对比，用于验证修复效果",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比原始版与修复版求解器",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/supported-calculations": {
+            "get": {
+                "description": "获取系统支持的所有计算类型列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "计算器管理"
+                ],
+                "summary": "获取支持的计算类型",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -176,6 +286,38 @@
                 }
             }
         },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string"
+                },
+                "differences": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "fixed": {},
+                "improvements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "original": {},
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
         "api.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -235,50 +377,51 @@
             ],
             "properties": {
                 "calculation": {
-                    "description": "璁＄畻绫诲瀷",
-                    "type": "string"
+                    "description": "计算类型",
+                    "type": "string",
+                    "example": "equation_solver"
                 },
                 "day": {
-                    "description": "鏃ユ湡",
+                    "description": "日期",
                     "type": "integer"
                 },
                 "days_from_term": {
-                    "description": "璺濊妭姘斿ぉ鏁?",
+                    "description": "距节气天数",
                     "type": "integer"
                 },
                 "hour": {
-                    "description": "灏忔椂",
+                    "description": "小时",
                     "type": "integer"
                 },
                 "minute": {
-                    "description": "鍒嗛挓",
+                    "description": "分钟",
                     "type": "integer"
                 },
                 "month": {
-                    "description": "鏈堜唤",
+                    "description": "月份",
                     "type": "integer"
                 },
                 "params": {
-                    "description": "璁＄畻鍙傛暟锛堟牸寮?锛?"
+                    "description": "计算参数（格式1）"
                 },
                 "second": {
-                    "description": "绉?",
+                    "description": "秒",
                     "type": "integer"
                 },
                 "solar_date": {
-                    "description": "闃冲巻鏃ユ湡",
+                    "description": "阳历日期",
                     "type": "string"
                 },
                 "target_longitude": {
-                    "description": "鐩爣榛勭粡",
+                    "description": "目标黄经",
                     "type": "number"
                 },
                 "term_index": {
-                    "description": "鑺傛皵绱㈠紩 (0-23)",
+                    "description": "节气索引 (0-23)",
                     "type": "integer"
                 },
                 "year": {
-                    "description": "鐩存帴鍙傛暟锛堟牸寮?锛?",
+                    "description": "直接参数（格式2）",
                     "type": "integer"
                 }
             }
