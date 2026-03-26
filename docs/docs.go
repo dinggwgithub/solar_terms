@@ -61,6 +61,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行各种类型的科学计算（修复版）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行修复版科学计算",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -117,6 +163,46 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "对比新旧方程求解器的计算结果差异",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比新旧求解器",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SolverComparisonResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -196,6 +282,22 @@ const docTemplate = `{
                 }
             }
         },
+        "api.FieldDiff": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "difference": {
+                    "type": "number"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "new_value": {},
+                "old_value": {}
+            }
+        },
         "api.HealthResponse": {
             "type": "object",
             "properties": {
@@ -214,6 +316,111 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "1.0.0"
+                }
+            }
+        },
+        "api.SolverComparisonReport": {
+            "type": "object",
+            "properties": {
+                "converged_new": {
+                    "type": "boolean"
+                },
+                "converged_old": {
+                    "type": "boolean"
+                },
+                "error_new_vs_old": {
+                    "type": "number"
+                },
+                "error_new_vs_theory": {
+                    "type": "number"
+                },
+                "error_old_vs_theory": {
+                    "type": "number"
+                },
+                "field_differences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldDiff"
+                    }
+                },
+                "final_value_new": {
+                    "type": "number"
+                },
+                "final_value_old": {
+                    "type": "number"
+                },
+                "final_value_theory": {
+                    "type": "number"
+                },
+                "improvement_ratio": {
+                    "type": "number"
+                },
+                "initial_value": {
+                    "type": "number"
+                },
+                "issue_summary": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "iterations_new": {
+                    "type": "integer"
+                },
+                "iterations_old": {
+                    "type": "integer"
+                },
+                "max_error_new": {
+                    "type": "number"
+                },
+                "max_error_old": {
+                    "type": "number"
+                },
+                "mean_error_new": {
+                    "type": "number"
+                },
+                "mean_error_old": {
+                    "type": "number"
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "test_equation": {
+                    "type": "string"
+                },
+                "time_points_match": {
+                    "type": "boolean"
+                },
+                "time_range": {
+                    "type": "number"
+                },
+                "time_step": {
+                    "type": "number"
+                }
+            }
+        },
+        "api.SolverComparisonResponse": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string"
+                },
+                "comparison_report": {
+                    "$ref": "#/definitions/api.SolverComparisonReport"
+                },
+                "new_result": {},
+                "old_result": {},
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
                 }
             }
         },
