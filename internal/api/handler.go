@@ -227,6 +227,8 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+	router.POST("/api/solver/compare", h.CompareResults)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
@@ -255,4 +257,80 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 		"calculations": calculations,
 		"total":        len(calculations),
 	})
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复版科学计算
+// @Description 执行修复版行星位置计算，修正赤经归一化和轨道参数计算
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	calcType, err := calculator.ParseCalculationType("planet_fixed")
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "不支持的计算类型")
+		return
+	}
+
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "planet_fixed", sessionID)
+}
+
+// CompareResults 新旧计算结果对比接口
+// @Summary 对比新旧计算结果
+// @Description 对比修复前后的行星位置计算结果
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareResults(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	calcType, err := calculator.ParseCalculationType("compare")
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "不支持的计算类型")
+		return
+	}
+
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "compare", sessionID)
 }
