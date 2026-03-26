@@ -61,6 +61,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行修复后的方程求解计算，确保数值计算正确",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行修复后的科学计算",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -122,6 +162,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/solver/compare": {
+            "post": {
+                "description": "同时运行旧版和新版求解器，返回字段级差异对比",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比新旧求解器结果",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system-info": {
             "get": {
                 "description": "获取系统支持的完整信息",
@@ -178,6 +258,51 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "comparisons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.CompareResult"
+                    }
+                },
+                "different_fields": {
+                    "type": "integer"
+                },
+                "new_result": {},
+                "old_result": {},
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "total_fields": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.CompareResult": {
+            "type": "object",
+            "properties": {
+                "difference": {
+                    "type": "number"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "new_value": {},
+                "old_value": {},
+                "relative_diff": {
+                    "type": "number"
+                },
+                "status": {
+                    "description": "\"same\", \"different\", \"added\", \"removed\"",
                     "type": "string"
                 }
             }
