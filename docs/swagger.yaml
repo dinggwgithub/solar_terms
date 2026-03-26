@@ -23,6 +23,15 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareRequest:
+    properties:
+      calculation:
+        example: ode_solver
+        type: string
+      params:
+        additionalProperties: true
+        type: object
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -135,6 +144,32 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 使用修复后的微分方程求解器计算，解决时间点不均匀、导数路径缺失、误差估计失真等问题
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CompareRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 修复版微分方程求解
+      tags:
+      - 微分方程求解
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +211,33 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比原版和修复版微分方程求解器的计算结果，返回差异分析
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CompareRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 返回对比结果
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比原版与修复版微分方程求解器
+      tags:
+      - 微分方程求解
   /api/system-info:
     get:
       consumes:

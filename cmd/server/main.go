@@ -121,10 +121,14 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 		calculator.NewSymbolicCalcCalculator(),
 	)
 
-	// 注册微分方程求解器
 	manager.RegisterCalculator(
 		calculator.CalculationTypeODESolver,
 		calculator.NewODESolverCalculator(),
+	)
+
+	manager.RegisterCalculator(
+		calculator.CalculationTypeODESolverFixed,
+		calculator.NewODESolverFixedCalculator(),
 	)
 }
 
