@@ -23,6 +23,20 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareResponse:
+    properties:
+      differences:
+        description: 差异分析
+      new_result:
+        description: 修复版计算结果
+      old_result:
+        description: 原始计算结果
+      session_id:
+        type: string
+      timestamp:
+        description: 时间戳
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -135,6 +149,36 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行各种类型的科学计算（修复版）
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复版科学计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +220,36 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 执行原始和修复版计算，返回对比结果（仅支持planet类型）
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数，calculation应为planet
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比新旧计算结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:

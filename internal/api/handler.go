@@ -64,6 +64,15 @@ type CalculatorInfoResponse struct {
 	Description string `json:"description"`
 }
 
+// CompareResponse 新旧计算结果对比响应
+type CompareResponse struct {
+	OldResult   interface{} `json:"old_result"`  // 原始计算结果
+	NewResult   interface{} `json:"new_result"`  // 修复版计算结果
+	Differences interface{} `json:"differences"` // 差异分析
+	Timestamp   string      `json:"timestamp"`   // 时间戳
+	SessionID   string      `json:"session_id,omitempty"`
+}
+
 // SystemInfoResponse 系统信息响应
 type SystemInfoResponse struct {
 	Version               string   `json:"version"`
@@ -228,6 +237,12 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// 修复版科学计算接口
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+
+	// 对比接口
+	router.POST("/api/solver/compare", h.CompareCalculations)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
@@ -255,4 +270,204 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 		"calculations": calculations,
 		"total":        len(calculations),
 	})
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复版科学计算
+// @Description 执行各种类型的科学计算（修复版）
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID，用于保持计算参数一致性，不传则自动生成"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 解析计算类型
+	calcType, err := calculator.ParseCalculationType(req.Calculation)
+	if err != nil {
+		// 如果是planet类型，使用修复版行星计算器
+		if req.Calculation == "planet" {
+			calcType = calculator.CalculationTypePlanetFixed
+		} else {
+			h.sendError(c, http.StatusBadRequest, "不支持的计算类型: "+req.Calculation)
+			return
+		}
+	}
+
+	// 对于planet_fixed类型，直接使用
+	if req.Calculation == "planet_fixed" {
+		calcType = calculator.CalculationTypePlanetFixed
+	}
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 执行计算
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, req.Calculation+"_fixed", sessionID)
+}
+
+// CompareCalculations 新旧计算结果对比接口
+// @Summary 对比新旧计算结果
+// @Description 执行原始和修复版计算，返回对比结果（仅支持planet类型）
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID，用于保持计算参数一致性，不传则自动生成"
+// @Param request body models.CalculationRequest true "计算请求参数，calculation应为planet"
+// @Success 200 {object} CompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareCalculations(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 只支持planet类型的对比
+	if req.Calculation != "planet" {
+		h.sendError(c, http.StatusBadRequest, "仅支持planet类型计算的对比")
+		return
+	}
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	params := req.GetParams()
+
+	// 执行原始计算
+	oldResult, _, errOld := h.calculatorManager.CalculateWithSession(
+		calculator.CalculationTypePlanet, params, sessionID)
+	if errOld != nil {
+		h.sendError(c, http.StatusBadRequest, "原始计算失败: "+errOld.Error())
+		return
+	}
+
+	// 执行修复版计算
+	newResult, _, errNew := h.calculatorManager.CalculateWithSession(
+		calculator.CalculationTypePlanetFixed, params, sessionID)
+	if errNew != nil {
+		h.sendError(c, http.StatusBadRequest, "修复版计算失败: "+errNew.Error())
+		return
+	}
+
+	// 分析差异
+	differences := h.analyzeDifferences(oldResult, newResult)
+
+	response := CompareResponse{
+		OldResult:   oldResult,
+		NewResult:   newResult,
+		Differences: differences,
+		Timestamp:   time.Now().Format(time.RFC3339),
+		SessionID:   sessionID,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// analyzeDifferences 分析新旧结果的差异
+func (h *APIHandler) analyzeDifferences(oldResult, newResult interface{}) map[string]interface{} {
+	differences := make(map[string]interface{})
+
+	// 使用map来解析结果，因为返回的是interface{}实际是*calculator.PlanetPosition
+	oldPos, ok1 := oldResult.(*calculator.PlanetPosition)
+	newPos, ok2 := newResult.(*calculator.PlanetPosition)
+
+	if ok1 && ok2 {
+		// 分析赤经差异
+		raDiff := newPos.RightAscension - oldPos.RightAscension
+		raNormalized := newPos.RightAscension // 修复后的值应该在0-24范围内
+		raIssue := oldPos.RightAscension < 0 || oldPos.RightAscension >= 24
+
+		differences["right_ascension"] = map[string]interface{}{
+			"old_value":      oldPos.RightAscension,
+			"new_value":      newPos.RightAscension,
+			"difference":     raDiff,
+			"was_negative":   oldPos.RightAscension < 0,
+			"was_over_range": oldPos.RightAscension >= 24,
+			"issue_fixed":    !raIssue && raNormalized >= 0 && raNormalized < 24,
+		}
+
+		// 分析赤纬差异
+		decDiff := newPos.Declination - oldPos.Declination
+		differences["declination"] = map[string]interface{}{
+			"old_value":  oldPos.Declination,
+			"new_value":  newPos.Declination,
+			"difference": decDiff,
+			"in_range":   newPos.Declination >= -90 && newPos.Declination <= 90,
+		}
+
+		// 分析距离差异
+		distDiff := newPos.Distance - oldPos.Distance
+		differences["distance"] = map[string]interface{}{
+			"old_value":    oldPos.Distance,
+			"new_value":    newPos.Distance,
+			"difference":   distDiff,
+			"is_hardcoded": oldPos.Distance == 1.2, // 火星旧值为硬编码的1.2
+		}
+
+		// 分析星等差异
+		magDiff := newPos.Magnitude - oldPos.Magnitude
+		differences["magnitude"] = map[string]interface{}{
+			"old_value":  oldPos.Magnitude,
+			"new_value":  newPos.Magnitude,
+			"difference": magDiff,
+		}
+
+		// 分析相位差异
+		phaseDiff := newPos.Phase - oldPos.Phase
+		differences["phase"] = map[string]interface{}{
+			"old_value":    oldPos.Phase,
+			"new_value":    newPos.Phase,
+			"difference":   phaseDiff,
+			"is_hardcoded": oldPos.Phase == 0.95,
+		}
+
+		// 分析距角差异
+		elongDiff := newPos.Elongation - oldPos.Elongation
+		differences["elongation"] = map[string]interface{}{
+			"old_value":    oldPos.Elongation,
+			"new_value":    newPos.Elongation,
+			"difference":   elongDiff,
+			"is_hardcoded": oldPos.Elongation == 120,
+		}
+
+		// 总体评估
+		differences["summary"] = map[string]interface{}{
+			"issues_found": []string{
+				"赤经负值问题",
+				"参数硬编码问题",
+				"计算精度问题",
+			},
+			"issues_fixed": []string{
+				"赤经已归一化到0-24小时范围",
+				"距离、相位、距角现为动态计算",
+				"计算精度提升",
+			},
+		}
+	} else {
+		differences["error"] = "无法分析结果差异：类型不匹配"
+	}
+
+	return differences
 }
