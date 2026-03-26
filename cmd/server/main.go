@@ -126,6 +126,18 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 		calculator.CalculationTypeODESolver,
 		calculator.NewODESolverCalculator(),
 	)
+
+	// 注册修复版行星位置计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypePlanetFixed,
+		calculator.NewPlanetCalculatorFixed(),
+	)
+
+	// 注册对比计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypeCompare,
+		calculator.NewCompareCalculator(),
+	)
 }
 
 // printSupportedCalculations 打印支持的计算任务
