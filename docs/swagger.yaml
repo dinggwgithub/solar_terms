@@ -23,6 +23,50 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareRequest:
+    properties:
+      calculation:
+        description: 计算类型
+        type: string
+      params:
+        description: 计算参数
+    required:
+    - calculation
+    type: object
+  api.CompareResponse:
+    properties:
+      differences:
+        description: 差异列表
+        items:
+          $ref: '#/definitions/api.DifferenceInfo'
+        type: array
+      fixed:
+        description: 修复后响应
+      original:
+        description: 原始响应
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
+  api.DifferenceInfo:
+    properties:
+      description:
+        description: 差异说明
+        type: string
+      field:
+        description: 差异字段
+        type: string
+      fixed:
+        description: 修复值
+      original:
+        description: 原始值
+      severity:
+        description: '严重程度: critical, major, minor'
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -135,6 +179,32 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行修复版星曜推算计算，修正历法、干支、星宿归属与方位映射等科学错误
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复版科学计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +246,32 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 接收相同的原始请求参数，返回原始缺陷响应与修复后响应的结构化对比结果
+      parameters:
+      - description: 对比请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CompareRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比原始与修复后的计算结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:

@@ -61,6 +61,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行修复版星曜推算计算，修正历法、干支、星宿归属与方位映射等科学错误",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行修复版科学计算",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -122,6 +162,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/solver/compare": {
+            "post": {
+                "description": "接收相同的原始请求参数，返回原始缺陷响应与修复后响应的结构化对比结果",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比原始与修复后的计算结果",
+                "parameters": [
+                    {
+                        "description": "对比请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system-info": {
             "get": {
                 "description": "获取系统支持的完整信息",
@@ -178,6 +258,71 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CompareRequest": {
+            "type": "object",
+            "required": [
+                "calculation"
+            ],
+            "properties": {
+                "calculation": {
+                    "description": "计算类型",
+                    "type": "string"
+                },
+                "params": {
+                    "description": "计算参数"
+                }
+            }
+        },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "differences": {
+                    "description": "差异列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.DifferenceInfo"
+                    }
+                },
+                "fixed": {
+                    "description": "修复后响应"
+                },
+                "original": {
+                    "description": "原始响应"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DifferenceInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "差异说明",
+                    "type": "string"
+                },
+                "field": {
+                    "description": "差异字段",
+                    "type": "string"
+                },
+                "fixed": {
+                    "description": "修复值"
+                },
+                "original": {
+                    "description": "原始值"
+                },
+                "severity": {
+                    "description": "严重程度: critical, major, minor",
                     "type": "string"
                 }
             }

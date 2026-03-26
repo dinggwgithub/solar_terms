@@ -28,6 +28,9 @@ func main() {
 	// 初始化API处理器
 	apiHandler := api.NewAPIHandler(calculatorManager)
 
+	// 初始化对比处理器
+	compareHandler := api.NewCompareHandler(calculatorManager)
+
 	// 初始化Gin路由
 	r := gin.Default()
 
@@ -36,6 +39,9 @@ func main() {
 
 	// 注册API路由
 	apiHandler.RegisterRoutes(r)
+
+	// 注册对比接口路由
+	r.POST("/api/solver/compare", compareHandler.CompareCalculation)
 
 	// 启动服务器
 	fmt.Println("========================================")
@@ -125,6 +131,12 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 	manager.RegisterCalculator(
 		calculator.CalculationTypeODESolver,
 		calculator.NewODESolverCalculator(),
+	)
+
+	// 注册修复版星曜推算计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypeStarFixed,
+		calculator.NewStarFixedCalculator(),
 	)
 }
 
