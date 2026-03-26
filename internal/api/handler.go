@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"scientific_calc/internal/calculator"
@@ -23,13 +24,15 @@ func GenerateSessionID() string {
 
 // APIHandler API处理器
 type APIHandler struct {
-	calculatorManager *calculator.CalculatorManager
+	calculatorManager   *calculator.CalculatorManager
+	starCalculatorFixed *calculator.StarCalculatorFixed
 }
 
 // NewAPIHandler 创建新的API处理器
 func NewAPIHandler(calculatorManager *calculator.CalculatorManager) *APIHandler {
 	return &APIHandler{
-		calculatorManager: calculatorManager,
+		calculatorManager:   calculatorManager,
+		starCalculatorFixed: calculator.NewStarCalculatorFixed(),
 	}
 }
 
@@ -228,6 +231,12 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// 修复版计算接口
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+
+	// 对比接口
+	router.POST("/api/solver/compare", h.CompareResults)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
@@ -255,4 +264,276 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 		"calculations": calculations,
 		"total":        len(calculations),
 	})
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复版科学计算
+// @Description 执行修复版科学计算，修正北斗七星、二十八宿方位、干支历法等错误
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	sessionID := GenerateSessionID()
+
+	if req.Calculation == "star" {
+		result, err := h.starCalculatorFixed.Calculate(req.GetParams())
+		if err != nil {
+			h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+			return
+		}
+		h.sendSuccess(c, result, nil, req.Calculation+"_fixed", sessionID)
+		return
+	}
+
+	calcType, err := calculator.ParseCalculationType(req.Calculation)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "不支持的计算类型: "+req.Calculation)
+		return
+	}
+
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, req.Calculation, sessionID)
+}
+
+// CompareResult 差异对比结果
+type CompareResult struct {
+	Field         string      `json:"field"`
+	OriginalValue interface{} `json:"original_value"`
+	FixedValue    interface{} `json:"fixed_value"`
+	Description   string      `json:"description"`
+}
+
+// CompareResponse 对比响应
+type CompareResponse struct {
+	Success        bool            `json:"success"`
+	OriginalResult interface{}     `json:"original_result"`
+	FixedResult    interface{}     `json:"fixed_result"`
+	Differences    []CompareResult `json:"differences"`
+	Summary        string          `json:"summary"`
+	Timestamp      string          `json:"timestamp"`
+}
+
+// CompareResults 对比接口
+// @Summary 对比原始计算与修复版计算结果
+// @Description 对比原始缺陷响应与修复后响应的结构化对比结果
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareResults(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	sessionID := GenerateSessionID()
+
+	var originalResult, fixedResult interface{}
+	var err error
+
+	if req.Calculation == "star" {
+		calcType := calculator.CalculationTypeStar
+		originalResult, _, err = h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+		if err != nil {
+			h.sendError(c, http.StatusBadRequest, "原始计算失败: "+err.Error())
+			return
+		}
+
+		fixedResult, err = h.starCalculatorFixed.Calculate(req.GetParams())
+		if err != nil {
+			h.sendError(c, http.StatusBadRequest, "修复版计算失败: "+err.Error())
+			return
+		}
+	} else {
+		calcType, err := calculator.ParseCalculationType(req.Calculation)
+		if err != nil {
+			h.sendError(c, http.StatusBadRequest, "不支持的计算类型: "+req.Calculation)
+			return
+		}
+
+		originalResult, _, err = h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+		if err != nil {
+			h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+			return
+		}
+		fixedResult = originalResult
+	}
+
+	differences := h.compareStarResults(originalResult, fixedResult)
+
+	summary := fmt.Sprintf("共发现 %d 处差异", len(differences))
+
+	c.JSON(http.StatusOK, CompareResponse{
+		Success:        true,
+		OriginalResult: originalResult,
+		FixedResult:    fixedResult,
+		Differences:    differences,
+		Summary:        summary,
+		Timestamp:      time.Now().Format(time.RFC3339),
+	})
+}
+
+// compareStarResults 对比星曜计算结果
+func (h *APIHandler) compareStarResults(original, fixed interface{}) []CompareResult {
+	var differences []CompareResult
+
+	origMap, ok1 := original.(map[string]interface{})
+	fixedMap, ok2 := fixed.(map[string]interface{})
+
+	if !ok1 || !ok2 {
+		origResult, ok1 := original.(*calculator.StarResult)
+		fixedResult, ok2 := fixed.(*calculator.StarResultFixed)
+		if ok1 && ok2 {
+			return h.compareStarResultStructs(origResult, fixedResult)
+		}
+		return differences
+	}
+
+	fieldsToCompare := []struct {
+		field       string
+		description string
+	}{
+		{"lunar_date", "农历日期"},
+		{"day_ganzhi", "日干支"},
+		{"constellation", "二十八宿"},
+		{"star_position", "星曜位置"},
+		{"auspicious", "是否吉日"},
+		{"day_score", "日分值"},
+		{"constellation_index", "二十八宿索引"},
+		{"auspicious_level", "吉凶程度"},
+		{"julian_day", "儒略日"},
+	}
+
+	for _, f := range fieldsToCompare {
+		origVal, origExists := origMap[f.field]
+		fixedVal, fixedExists := fixedMap[f.field]
+
+		if origExists && fixedExists {
+			if !h.compareValues(origVal, fixedVal) {
+				differences = append(differences, CompareResult{
+					Field:         f.field,
+					OriginalValue: origVal,
+					FixedValue:    fixedVal,
+					Description:   f.description + " 存在差异",
+				})
+			}
+		}
+	}
+
+	return differences
+}
+
+// compareStarResultStructs 对比结构体类型的星曜计算结果
+func (h *APIHandler) compareStarResultStructs(orig *calculator.StarResult, fixed *calculator.StarResultFixed) []CompareResult {
+	var differences []CompareResult
+
+	if orig.LunarDate != fixed.LunarDate {
+		differences = append(differences, CompareResult{
+			Field:         "lunar_date",
+			OriginalValue: orig.LunarDate,
+			FixedValue:    fixed.LunarDate,
+			Description:   "农历日期修正：原实现直接使用公历月日作为农历，修复版实现正确的公历转农历算法",
+		})
+	}
+
+	if orig.DayGanZhi != fixed.DayGanZhi {
+		differences = append(differences, CompareResult{
+			Field:         "day_ganzhi",
+			OriginalValue: orig.DayGanZhi,
+			FixedValue:    fixed.DayGanZhi,
+			Description:   "日干支修正：原实现使用错误的基准日，修复版使用正确的1900年1月31日（甲子日）作为基准",
+		})
+	}
+
+	if orig.Constellation != fixed.Constellation {
+		differences = append(differences, CompareResult{
+			Field:         "constellation",
+			OriginalValue: orig.Constellation,
+			FixedValue:    fixed.Constellation,
+			Description:   "二十八宿修正：调整了二十八宿值日计算算法",
+		})
+	}
+
+	if orig.StarPosition != fixed.StarPosition {
+		differences = append(differences, CompareResult{
+			Field:         "star_position",
+			OriginalValue: orig.StarPosition,
+			FixedValue:    fixed.StarPosition,
+			Description:   "星曜位置修正：原实现将南方朱雀标注为西方，修复版正确标注方位",
+		})
+	}
+
+	if orig.DayScore != fixed.DayScore {
+		differences = append(differences, CompareResult{
+			Field:         "day_score",
+			OriginalValue: orig.DayScore,
+			FixedValue:    fixed.DayScore,
+			Description:   "日分值修正：原实现使用日期哈希，修复版基于干支和星宿吉凶计算",
+		})
+	}
+
+	if orig.AuspiciousLevel != fixed.AuspiciousLevel {
+		differences = append(differences, CompareResult{
+			Field:         "auspicious_level",
+			OriginalValue: orig.AuspiciousLevel,
+			FixedValue:    fixed.AuspiciousLevel,
+			Description:   "吉凶程度修正：修复评分逻辑使其与吉凶判断自洽",
+		})
+	}
+
+	if fixed.BigDipperInfo != nil {
+		differences = append(differences, CompareResult{
+			Field:         "big_dipper_info",
+			OriginalValue: nil,
+			FixedValue:    fixed.BigDipperInfo,
+			Description:   "新增北斗七星专属信息：原实现未处理star_name=big_dipper参数，修复版返回北斗七星详细天文数据",
+		})
+	}
+
+	return differences
+}
+
+// compareValues 比较两个值是否相等
+func (h *APIHandler) compareValues(a, b interface{}) bool {
+	switch a := a.(type) {
+	case float64:
+		if b, ok := b.(float64); ok {
+			return a == b
+		}
+	case string:
+		if b, ok := b.(string); ok {
+			return a == b
+		}
+	case bool:
+		if b, ok := b.(bool); ok {
+			return a == b
+		}
+	case int:
+		if b, ok := b.(int); ok {
+			return a == b
+		}
+		if b, ok := b.(float64); ok {
+			return float64(a) == b
+		}
+	}
+	return false
 }
