@@ -64,6 +64,14 @@ type CalculatorInfoResponse struct {
 	Description string `json:"description"`
 }
 
+// CompareResponse 对比响应
+type CompareResponse struct {
+	Original interface{} `json:"original"` // 原计算结果
+	Fixed    interface{} `json:"fixed"`    // 修复后计算结果
+	Diff     interface{} `json:"diff"`     // 差异分析
+	IsFixed  bool        `json:"is_fixed"` // 是否已修复
+}
+
 // SystemInfoResponse 系统信息响应
 type SystemInfoResponse struct {
 	Version               string   `json:"version"`
@@ -127,6 +135,189 @@ func (h *APIHandler) Calculate(c *gin.Context) {
 	}
 
 	h.sendSuccess(c, result, warnings, req.Calculation, sessionID)
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复版科学计算
+// @Description 执行各种类型的科学计算（修复版符号计算）
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID，用于保持计算参数一致性，不传则自动生成"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 强制使用修复版符号计算器
+	calcType := calculator.CalculationTypeSymbolicCalcFixed
+
+	// 获取或生成会话ID（用于保持参数一致性）
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 执行计算
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "symbolic_calc_fixed", sessionID)
+}
+
+// CompareCalculation 对比修复前后计算结果
+// @Summary 对比修复前后计算结果
+// @Description 执行符号计算并对比修复前后的结果差异
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareCalculation(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	params := req.GetParams()
+
+	// 执行原始计算
+	originalResult, _, originalErr := h.calculatorManager.CalculateWithSession(
+		calculator.CalculationTypeSymbolicCalc,
+		params,
+		"",
+	)
+
+	// 执行修复后计算
+	fixedResult, _, fixedErr := h.calculatorManager.CalculateWithSession(
+		calculator.CalculationTypeSymbolicCalcFixed,
+		params,
+		"",
+	)
+
+	// 分析差异
+	diff := h.analyzeDiff(originalResult, originalErr, fixedResult, fixedErr)
+	isFixed := h.checkIsFixed(originalResult, fixedResult)
+
+	response := CompareResponse{
+		Original: map[string]interface{}{
+			"result": originalResult,
+			"error":  h.errToString(originalErr),
+		},
+		Fixed: map[string]interface{}{
+			"result": fixedResult,
+			"error":  h.errToString(fixedErr),
+		},
+		Diff:    diff,
+		IsFixed: isFixed,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// analyzeDiff 分析计算结果差异
+func (h *APIHandler) analyzeDiff(original interface{}, originalErr error, fixed interface{}, fixedErr error) interface{} {
+	diff := make(map[string]interface{})
+
+	// 转换为map以便比较
+	originalMap, _ := original.(map[string]interface{})
+	fixedMap, _ := fixed.(map[string]interface{})
+
+	// 检查主要字段
+	if originalMap != nil && fixedMap != nil {
+		fieldsToCheck := []string{"derivative", "simplified", "numeric_value", "result_expression"}
+		fieldDiff := make(map[string]map[string]interface{})
+
+		for _, field := range fieldsToCheck {
+			origVal, origExists := originalMap[field]
+			fixedVal, fixedExists := fixedMap[field]
+
+			changed := false
+			if origExists != fixedExists {
+				changed = true
+			} else if origExists && fixedExists {
+				changed = origVal != fixedVal
+			}
+
+			if changed {
+				fieldDiff[field] = map[string]interface{}{
+					"original": origVal,
+					"fixed":    fixedVal,
+					"changed":  true,
+				}
+			}
+		}
+
+		if len(fieldDiff) > 0 {
+			diff["fields"] = fieldDiff
+		}
+	}
+
+	// 错误状态对比
+	if originalErr != nil && fixedErr == nil {
+		diff["error_fixed"] = true
+		diff["original_error"] = originalErr.Error()
+	}
+
+	return diff
+}
+
+// checkIsFixed 检查是否已修复
+func (h *APIHandler) checkIsFixed(original interface{}, fixed interface{}) bool {
+	originalMap, _ := original.(map[string]interface{})
+	fixedMap, _ := fixed.(map[string]interface{})
+
+	if originalMap == nil || fixedMap == nil {
+		return false
+	}
+
+	// 检查关键字段是否已修复
+	// 1. derivative字段是否不再是占位符
+	if origDeriv, ok := originalMap["derivative"].(string); ok {
+		if fixedDeriv, ok2 := fixedMap["derivative"].(string); ok2 {
+			// 如果原始结果包含d/dx(...)占位符而修复后不包含，则认为已修复
+			if (len(origDeriv) >= 6 && origDeriv[0:4] == "d/d") &&
+				!(len(fixedDeriv) >= 6 && fixedDeriv[0:4] == "d/d") {
+				return true
+			}
+		}
+	}
+
+	// 2. simplified字段是否不再为空
+	if origSimp, ok := originalMap["simplified"].(string); ok && origSimp == "" {
+		if fixedSimp, ok2 := fixedMap["simplified"].(string); ok2 && fixedSimp != "" {
+			return true
+		}
+	}
+
+	// 3. numeric_value是否不再为0
+	if origNum, ok := originalMap["numeric_value"].(float64); ok && origNum == 0 {
+		if fixedNum, ok2 := fixedMap["numeric_value"].(float64); ok2 && fixedNum != 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// errToString 错误转字符串
+func (h *APIHandler) errToString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 // GetCalculatorInfo 获取计算器信息接口
@@ -227,6 +418,10 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+
+	// 对比接口
+	router.POST("/api/solver/compare", h.CompareCalculation)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)

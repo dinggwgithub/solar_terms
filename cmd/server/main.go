@@ -126,6 +126,12 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 		calculator.CalculationTypeODESolver,
 		calculator.NewODESolverCalculator(),
 	)
+
+	// 注册修复后的符号计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypeSymbolicCalcFixed,
+		calculator.NewSymbolicCalcCalculatorFixed(),
+	)
 }
 
 // printSupportedCalculations 打印支持的计算任务
