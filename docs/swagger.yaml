@@ -32,6 +32,17 @@ definitions:
       success:
         type: boolean
     type: object
+  api.FieldDiff:
+    properties:
+      description:
+        type: string
+      difference:
+        type: number
+      field:
+        type: string
+      new_value: {}
+      old_value: {}
+    type: object
   api.HealthResponse:
     properties:
       build_time:
@@ -45,6 +56,76 @@ definitions:
         type: string
       version:
         example: 1.0.0
+        type: string
+    type: object
+  api.SolverComparisonReport:
+    properties:
+      converged_new:
+        type: boolean
+      converged_old:
+        type: boolean
+      error_new_vs_old:
+        type: number
+      error_new_vs_theory:
+        type: number
+      error_old_vs_theory:
+        type: number
+      field_differences:
+        items:
+          $ref: '#/definitions/api.FieldDiff'
+        type: array
+      final_value_new:
+        type: number
+      final_value_old:
+        type: number
+      final_value_theory:
+        type: number
+      improvement_ratio:
+        type: number
+      initial_value:
+        type: number
+      issue_summary:
+        items:
+          type: string
+        type: array
+      iterations_new:
+        type: integer
+      iterations_old:
+        type: integer
+      max_error_new:
+        type: number
+      max_error_old:
+        type: number
+      mean_error_new:
+        type: number
+      mean_error_old:
+        type: number
+      recommendations:
+        items:
+          type: string
+        type: array
+      test_equation:
+        type: string
+      time_points_match:
+        type: boolean
+      time_range:
+        type: number
+      time_step:
+        type: number
+    type: object
+  api.SolverComparisonResponse:
+    properties:
+      calculation:
+        type: string
+      comparison_report:
+        $ref: '#/definitions/api.SolverComparisonReport'
+      new_result: {}
+      old_result: {}
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
         type: string
     type: object
   api.SystemInfoResponse:
@@ -135,6 +216,36 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行各种类型的科学计算（修复版）
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复版科学计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +287,32 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比新旧方程求解器的计算结果差异
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SolverComparisonResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比新旧求解器
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:
