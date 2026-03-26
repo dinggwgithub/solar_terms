@@ -228,6 +228,10 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// ODE求解器修复接口
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+	router.POST("/api/solver/compare", h.CompareSolvers)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 

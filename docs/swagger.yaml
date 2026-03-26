@@ -47,6 +47,72 @@ definitions:
         example: 1.0.0
         type: string
     type: object
+  api.ODECompareRequest:
+    properties:
+      fixed_request: {}
+      original_request: {}
+    required:
+    - fixed_request
+    - original_request
+    type: object
+  api.ODECompareResponse:
+    properties:
+      differences:
+        $ref: '#/definitions/api.ODEDifferences'
+      fixed_result:
+        $ref: '#/definitions/calculator.ODEResultFixed'
+      original_result:
+        $ref: '#/definitions/calculator.ODEResult'
+      success:
+        type: boolean
+      timestamp:
+        type: string
+    type: object
+  api.ODEDifferences:
+    properties:
+      derivative_path_match:
+        type: boolean
+      error_estimate_diff:
+        type: number
+      final_value_diff:
+        type: number
+      issues:
+        items:
+          type: string
+        type: array
+      solution_path_diff:
+        items:
+          type: number
+        type: array
+      solution_path_match:
+        type: boolean
+      time_points_diff:
+        items:
+          type: number
+        type: array
+      time_points_match:
+        type: boolean
+    type: object
+  api.ODEFixedResponse:
+    properties:
+      calculation:
+        type: string
+      result:
+        $ref: '#/definitions/calculator.ODEResultFixed'
+      session_id:
+        type: string
+      success:
+        type: boolean
+      timestamp:
+        type: string
+      version:
+        description: 标识修复版本
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
   api.SystemInfoResponse:
     properties:
       supported_calculations:
@@ -57,6 +123,66 @@ definitions:
         type: integer
       version:
         type: string
+    type: object
+  calculator.ODEResult:
+    properties:
+      derivative_path:
+        description: 导数路径（二阶方程）
+        items:
+          type: number
+        type: array
+      error_estimate:
+        description: 误差估计
+        type: number
+      method_used:
+        description: 使用的求解方法
+        type: string
+      solution:
+        description: 最终解
+        type: number
+      solution_path:
+        description: 解路径
+        items:
+          type: number
+        type: array
+      stability:
+        description: 数值稳定性
+        type: string
+      time_points:
+        description: 时间点序列
+        items:
+          type: number
+        type: array
+    type: object
+  calculator.ODEResultFixed:
+    properties:
+      derivative_path:
+        description: 导数路径
+        items:
+          type: number
+        type: array
+      error_estimate:
+        description: 误差估计（与精确解对比）
+        type: number
+      method_used:
+        description: 使用的求解方法
+        type: string
+      solution:
+        description: 最终解
+        type: number
+      solution_path:
+        description: 解路径
+        items:
+          type: number
+        type: array
+      stability:
+        description: 数值稳定性
+        type: string
+      time_points:
+        description: 时间点序列
+        items:
+          type: number
+        type: array
     type: object
   models.CalculationRequest:
     properties:
@@ -135,6 +261,33 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 使用修复后的算法求解微分方程，确保时间点均匀、导数路径完整、误差估计准确
+      parameters:
+      - description: ODE求解参数
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ODEFixedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 修复版微分方程求解
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +329,32 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 同时运行原始和修复后的求解器，返回详细对比结果
+      parameters:
+      - description: 对比请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ODECompareRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ODECompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比原始和修复后的ODE求解器
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:
