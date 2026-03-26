@@ -146,7 +146,7 @@ func (c *ODESolverCalculator) validateParams(params *ODEParams) error {
 	return nil
 }
 
-// solveWithEuler 使用欧拉法求解
+// solveWithEuler 使用欧拉法求解（旧版本，保留用于对比）
 func (c *ODESolverCalculator) solveWithEuler(params *ODEParams) (*ODEResult, error) {
 	timePoints := []float64{0}
 	solutionPath := []float64{params.InitialValue}
@@ -211,6 +211,57 @@ func (c *ODESolverCalculator) solveWithEuler(params *ODEParams) (*ODEResult, err
 		MethodUsed:     "Euler",
 		Stability:      stability,
 		ErrorEstimate:  c.estimateError(params, solutionPath),
+	}, nil
+}
+
+// SolveWithEulerFixed 使用修复后的欧拉法求解（固定步长，完整记录导数路径）
+func (c *ODESolverCalculator) SolveWithEulerFixed(params *ODEParams) (*ODEResult, error) {
+	// 计算步数（确保包含终点）
+	numSteps := int(math.Ceil(params.TimeRange / params.TimeStep))
+	timePoints := make([]float64, numSteps+1)
+	solutionPath := make([]float64, numSteps+1)
+	derivativePath := make([]float64, numSteps+1)
+
+	// 初始条件
+	timePoints[0] = 0.0
+	solutionPath[0] = params.InitialValue
+	derivativePath[0] = c.evaluateFirstOrder(params.Equation, 0.0, params.InitialValue)
+
+	y := params.InitialValue
+
+	for i := 1; i <= numSteps; i++ {
+		// 固定时间步长
+		t := timePoints[i-1]
+		actualTimeStep := params.TimeStep
+
+		// 确保最后一步不超过时间范围
+		if t+actualTimeStep > params.TimeRange {
+			actualTimeStep = params.TimeRange - t
+			timePoints[i] = params.TimeRange
+		} else {
+			// 避免浮点精度累积问题，使用整数乘法计算时间点
+			timePoints[i] = float64(i) * params.TimeStep
+		}
+
+		// 欧拉法求解：y_{n+1} = y_n + h * f(t_n, y_n)
+		dydt := c.evaluateFirstOrder(params.Equation, t, y)
+		y = y + actualTimeStep*dydt
+
+		solutionPath[i] = y
+		derivativePath[i] = c.evaluateFirstOrder(params.Equation, timePoints[i], y)
+	}
+
+	// 评估数值稳定性
+	stability := c.assessStability(params, solutionPath)
+
+	return &ODEResult{
+		Solution:       y,
+		TimePoints:     timePoints,
+		SolutionPath:   solutionPath,
+		DerivativePath: derivativePath,
+		MethodUsed:     "Euler-Fixed",
+		Stability:      stability,
+		ErrorEstimate:  c.estimateErrorFixed(params, solutionPath),
 	}, nil
 }
 
@@ -416,7 +467,7 @@ func (c *ODESolverCalculator) assessStability(params *ODEParams, solutionPath []
 	}
 }
 
-// estimateError 估计数值误差
+// estimateError 估计数值误差（旧版本）
 func (c *ODESolverCalculator) estimateError(params *ODEParams, solutionPath []float64) float64 {
 	if len(solutionPath) < 2 {
 		return 0.0
@@ -435,6 +486,64 @@ func (c *ODESolverCalculator) estimateError(params *ODEParams, solutionPath []fl
 	}
 
 	return 0.0
+}
+
+// estimateErrorFixed 修复后的误差估计
+// 对于 dy/dt = -y，解析解为 y = y0 * exp(-t)
+func (c *ODESolverCalculator) estimateErrorFixed(params *ODEParams, solutionPath []float64) float64 {
+	if len(solutionPath) < 2 {
+		return 0.0
+	}
+
+	// 如果是已知方程（如 dy/dt = -y），与解析解对比计算误差
+	if params.Equation == "dy/dt = -y" {
+		maxError := 0.0
+		for i, y := range solutionPath {
+			t := float64(i) * params.TimeStep
+			exact := params.InitialValue * math.Exp(-t)
+			error := math.Abs(y - exact)
+			if error > maxError {
+				maxError = error
+			}
+		}
+		return maxError
+	}
+
+	// 对于其他方程，使用改进的误差估计
+	// 使用欧拉法的局部截断误差估计 O(h²)
+	return params.TimeStep * params.TimeStep * 0.5
+}
+
+// CalculateFixed 使用修复后的逻辑执行微分方程求解
+func (c *ODESolverCalculator) CalculateFixed(params interface{}) (interface{}, error) {
+	odeParams, err := c.parseParams(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// 验证参数
+	if err := c.validateParams(odeParams); err != nil {
+		return nil, err
+	}
+
+	// 根据求解方法执行计算（目前只修复了欧拉法）
+	var result *ODEResult
+	switch odeParams.Method {
+	case "euler":
+		result, err = c.SolveWithEulerFixed(odeParams)
+	case "rk4":
+		result, err = c.solveWithRK4(odeParams)
+	case "adams":
+		result, err = c.solveWithAdams(odeParams)
+	default:
+		return nil, fmt.Errorf("不支持的求解方法: %s", odeParams.Method)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // Validate 验证输入参数

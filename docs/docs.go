@@ -61,6 +61,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行各种类型的科学计算（修复版，用于对比测试）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行科学计算（修复版）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -122,6 +168,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/solver/compare": {
+            "post": {
+                "description": "对比修复前后微分方程求解器的计算结果差异",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比修复前后求解器结果",
+                "parameters": [
+                    {
+                        "description": "对比请求参数（包含原始请求和修复后请求）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system-info": {
             "get": {
                 "description": "获取系统支持的完整信息",
@@ -178,6 +264,35 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CompareRequest": {
+            "type": "object",
+            "required": [
+                "fixed",
+                "original"
+            ],
+            "properties": {
+                "fixed": {
+                    "$ref": "#/definitions/models.CalculationRequest"
+                },
+                "original": {
+                    "$ref": "#/definitions/models.CalculationRequest"
+                }
+            }
+        },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "difference": {},
+                "fixed_result": {},
+                "original_result": {},
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
                     "type": "string"
                 }
             }
