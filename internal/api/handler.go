@@ -1,8 +1,10 @@
 package api
 
 import (
+	"math"
 	"math/rand"
 	"net/http"
+	"reflect"
 	"scientific_calc/internal/calculator"
 	"scientific_calc/models"
 	"time"
@@ -228,6 +230,12 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// 修复版科学计算接口
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+
+	// 求解器对比接口
+	router.POST("/api/solver/compare", h.CompareSolvers)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
@@ -255,4 +263,278 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 		"calculations": calculations,
 		"total":        len(calculations),
 	})
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复后的科学计算
+// @Description 执行修复后的方程求解计算，确保数值计算正确
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 只支持 equation_solver 类型使用修复版
+	if req.Calculation != "equation_solver" {
+		h.sendError(c, http.StatusBadRequest, "修复版接口仅支持 equation_solver 计算类型")
+		return
+	}
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 使用修复后的计算器
+	fixedCalc := calculator.NewEquationSolverCalculatorFixed()
+	if err := fixedCalc.Validate(req.GetParams()); err != nil {
+		h.sendError(c, http.StatusBadRequest, "参数验证失败: "+err.Error())
+		return
+	}
+
+	result, err := fixedCalc.Calculate(req.GetParams())
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, nil, req.Calculation, sessionID)
+}
+
+// CompareResult 对比结果结构
+type CompareResult struct {
+	Field        string      `json:"field"`
+	OldValue     interface{} `json:"old_value"`
+	NewValue     interface{} `json:"new_value"`
+	Difference   float64     `json:"difference,omitempty"`
+	RelativeDiff float64     `json:"relative_diff,omitempty"`
+	Status       string      `json:"status"` // "same", "different", "added", "removed"
+}
+
+// CompareResponse 对比响应
+type CompareResponse struct {
+	Success         bool            `json:"success"`
+	OldResult       interface{}     `json:"old_result"`
+	NewResult       interface{}     `json:"new_result"`
+	Comparisons     []CompareResult `json:"comparisons"`
+	TotalFields     int             `json:"total_fields"`
+	DifferentFields int             `json:"different_fields"`
+	Timestamp       string          `json:"timestamp"`
+}
+
+// CompareSolvers 求解器对比接口
+// @Summary 对比新旧求解器结果
+// @Description 同时运行旧版和新版求解器，返回字段级差异对比
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareSolvers(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 只支持 equation_solver 类型
+	if req.Calculation != "equation_solver" {
+		h.sendError(c, http.StatusBadRequest, "对比接口仅支持 equation_solver 计算类型")
+		return
+	}
+
+	params := req.GetParams()
+
+	// 运行旧版求解器
+	oldCalc := calculator.NewEquationSolverCalculator()
+	var oldResult interface{}
+	if err := oldCalc.Validate(params); err == nil {
+		oldResult, _ = oldCalc.Calculate(params)
+	}
+
+	// 运行新版求解器
+	newCalc := calculator.NewEquationSolverCalculatorFixed()
+	var newResult interface{}
+	if err := newCalc.Validate(params); err == nil {
+		newResult, _ = newCalc.Calculate(params)
+	}
+
+	// 对比结果
+	comparisons := h.compareResults(oldResult, newResult)
+
+	// 统计差异
+	differentCount := 0
+	for _, comp := range comparisons {
+		if comp.Status == "different" {
+			differentCount++
+		}
+	}
+
+	c.JSON(http.StatusOK, CompareResponse{
+		Success:         true,
+		OldResult:       oldResult,
+		NewResult:       newResult,
+		Comparisons:     comparisons,
+		TotalFields:     len(comparisons),
+		DifferentFields: differentCount,
+		Timestamp:       time.Now().Format(time.RFC3339),
+	})
+}
+
+// compareResults 对比两个结果结构
+func (h *APIHandler) compareResults(oldResult, newResult interface{}) []CompareResult {
+	var comparisons []CompareResult
+
+	if oldResult == nil && newResult == nil {
+		return comparisons
+	}
+
+	// 获取结果的所有字段
+	oldFields := h.extractFields(oldResult)
+	newFields := h.extractFields(newResult)
+
+	// 收集所有字段名
+	allFields := make(map[string]bool)
+	for field := range oldFields {
+		allFields[field] = true
+	}
+	for field := range newFields {
+		allFields[field] = true
+	}
+
+	// 对比每个字段
+	for field := range allFields {
+		oldVal, oldExists := oldFields[field]
+		newVal, newExists := newFields[field]
+
+		comp := CompareResult{
+			Field:    field,
+			OldValue: oldVal,
+			NewValue: newVal,
+		}
+
+		switch {
+		case !oldExists && newExists:
+			comp.Status = "added"
+		case oldExists && !newExists:
+			comp.Status = "removed"
+		case h.valuesEqual(oldVal, newVal):
+			comp.Status = "same"
+		default:
+			comp.Status = "different"
+			// 计算数值差异
+			if oldFloat, ok1 := h.toFloat64(oldVal); ok1 {
+				if newFloat, ok2 := h.toFloat64(newVal); ok2 {
+					comp.Difference = newFloat - oldFloat
+					if oldFloat != 0 {
+						comp.RelativeDiff = (newFloat - oldFloat) / oldFloat
+					}
+				}
+			}
+		}
+
+		comparisons = append(comparisons, comp)
+	}
+
+	return comparisons
+}
+
+// extractFields 提取结构体的字段
+func (h *APIHandler) extractFields(result interface{}) map[string]interface{} {
+	fields := make(map[string]interface{})
+
+	if result == nil {
+		return fields
+	}
+
+	v := reflect.ValueOf(result)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return fields
+	}
+
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i).Interface()
+		// 使用 json tag 作为字段名
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" && jsonTag != "-" {
+			// 去掉 omitempty 等选项
+			if idx := len(jsonTag); idx > 0 {
+				for j, c := range jsonTag {
+					if c == ',' {
+						idx = j
+						break
+					}
+				}
+				fields[jsonTag[:idx]] = value
+			}
+		} else {
+			fields[field.Name] = value
+		}
+	}
+
+	return fields
+}
+
+// valuesEqual 比较两个值是否相等
+func (h *APIHandler) valuesEqual(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// 尝试数值比较
+	if aFloat, ok1 := h.toFloat64(a); ok1 {
+		if bFloat, ok2 := h.toFloat64(b); ok2 {
+			// 使用相对容差比较浮点数
+			if aFloat == 0 && bFloat == 0 {
+				return true
+			}
+			diff := math.Abs(aFloat - bFloat)
+			maxVal := math.Max(math.Abs(aFloat), math.Abs(bFloat))
+			if maxVal == 0 {
+				return diff < 1e-10
+			}
+			return diff/maxVal < 1e-6
+		}
+	}
+
+	// 使用反射比较
+	return reflect.DeepEqual(a, b)
+}
+
+// toFloat64 尝试将值转换为 float64
+func (h *APIHandler) toFloat64(v interface{}) (float64, bool) {
+	switch val := v.(type) {
+	case float64:
+		return val, true
+	case float32:
+		return float64(val), true
+	case int:
+		return float64(val), true
+	case int32:
+		return float64(val), true
+	case int64:
+		return float64(val), true
+	default:
+		return 0, false
+	}
 }

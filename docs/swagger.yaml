@@ -23,6 +23,37 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareResponse:
+    properties:
+      comparisons:
+        items:
+          $ref: '#/definitions/api.CompareResult'
+        type: array
+      different_fields:
+        type: integer
+      new_result: {}
+      old_result: {}
+      success:
+        type: boolean
+      timestamp:
+        type: string
+      total_fields:
+        type: integer
+    type: object
+  api.CompareResult:
+    properties:
+      difference:
+        type: number
+      field:
+        type: string
+      new_value: {}
+      old_value: {}
+      relative_diff:
+        type: number
+      status:
+        description: '"same", "different", "added", "removed"'
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -135,6 +166,32 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行修复后的方程求解计算，确保数值计算正确
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复后的科学计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +233,32 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 同时运行旧版和新版求解器，返回字段级差异对比
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比新旧求解器结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:
