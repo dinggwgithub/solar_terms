@@ -55,6 +55,52 @@
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行各种类型的科学计算（修复版符号计算）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行修复版科学计算",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -111,6 +157,46 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "执行符号计算并对比修复前后的结果差异",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比修复前后计算结果",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -173,6 +259,24 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "diff": {
+                    "description": "差异分析"
+                },
+                "fixed": {
+                    "description": "修复后计算结果"
+                },
+                "is_fixed": {
+                    "description": "是否已修复",
+                    "type": "boolean"
+                },
+                "original": {
+                    "description": "原计算结果"
                 }
             }
         },
