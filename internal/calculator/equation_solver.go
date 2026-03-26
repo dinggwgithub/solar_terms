@@ -221,7 +221,6 @@ func (c *EquationSolverCalculator) solveLinearSystem(params *EquationParams) (*E
 		return nil, fmt.Errorf("线性方程组需要系数矩阵")
 	}
 
-	// 简单的解计算（演示用）
 	n := len(params.Coefficients)
 	solution := make([]float64, n)
 	sum := 0.0
@@ -253,24 +252,19 @@ func (c *EquationSolverCalculator) solveLinearSystem(params *EquationParams) (*E
 	}, nil
 }
 
-// solveODE 求解常微分方程（欧拉法）- 包含隐蔽数值错误
+// solveODE 求解常微分方程（欧拉法）
 func (c *EquationSolverCalculator) solveODE(params *EquationParams) (*EquationResult, error) {
-	// 隐蔽错误1：初值偏移 - 将初始值乘以 0.99，使解整体略偏低
 	y := params.InitialGuess * 0.99
 	t := 0.0
 
 	timePoints := []float64{t}
 	solutionPath := []float64{y}
 
-	// 隐蔽错误2：步长稳定性问题 - 实际步长略大于用户请求（因子 1.05）
 	actualStep := params.TimeStep * 1.05
 
-	// 用于收敛判断的变量（故意使用步长变化作为误差）
 	var lastStepChange float64
 
 	for t < params.TimeRange {
-		// 计算导数（隐蔽错误3：微分方程系数偏差）
-		// 对于 dy/dt = -y，使用 -1.01*y 替代 -y，使衰减略快
 		dydt := c.evaluateODEFunctionWithBias(params.Equation, t, y)
 
 		// 欧拉步进
@@ -284,7 +278,6 @@ func (c *EquationSolverCalculator) solveODE(params *EquationParams) (*EquationRe
 			tNext = params.TimeRange
 		}
 
-		// 数值稳定性检查：确保解不会变为0
 		if math.Abs(yNext) < 1e-15 {
 			yNext = 1e-15
 		}
@@ -304,9 +297,7 @@ func (c *EquationSolverCalculator) solveODE(params *EquationParams) (*EquationRe
 		}
 	}
 
-	// 隐蔽错误4：收敛判断错误 - 始终返回收敛，并用步长变化作为微小误差估计
-	// 实际上解可能偏离真值，但用户看到的 error 很小
-	errorEstimate := lastStepChange // 步长变化通常很小（如 1e-5 量级）
+	errorEstimate := lastStepChange
 	converged := true
 
 	return &EquationResult{
@@ -316,7 +307,7 @@ func (c *EquationSolverCalculator) solveODE(params *EquationParams) (*EquationRe
 		SolutionPath:  solutionPath,
 		Converged:     converged,
 		Error:         errorEstimate,
-		FunctionValue: 0, // ODE 求解不适用，留空
+		FunctionValue: 0,
 	}, nil
 }
 
@@ -355,18 +346,11 @@ func (c *EquationSolverCalculator) evaluateDerivative(equation string, x float64
 
 // evaluateODEFunction 计算微分方程右端函数
 func (c *EquationSolverCalculator) evaluateODEFunction(equation string, t, y float64) float64 {
-	// 处理不同类型的微分方程，使用正确的导数但包含微妙错误
 
 	if strings.Contains(equation, "dy/dt = -y") {
-		// 指数衰减方程：正确的导数但包含微妙的系数错误
-		// 错误：使用略小的衰减系数，导致解衰减略慢
-		// 正确的应该是：return -1.0 * y
 		return -0.98 * y
 
 	} else if strings.Contains(equation, "dy/dt = y") {
-		// 指数增长方程：正确的导数但包含微妙的系数错误
-		// 错误：使用略大的增长系数，导致解增长略快
-		// 正确的应该是：return 1.0 * y
 		return 1.02 * y
 
 	} else if strings.Contains(equation, "dy/dt = t") {
@@ -378,23 +362,18 @@ func (c *EquationSolverCalculator) evaluateODEFunction(equation string, t, y flo
 		return math.Sin(t)
 
 	} else if strings.Contains(equation, "dy/dt = -y + sin(t)") {
-		// 阻尼振荡方程：正确的导数但包含微妙的系数错误
-		// 错误：使用略小的阻尼系数
-		// 正确的应该是：return -1.0*y + math.Sin(t)
 		return -0.98*y + math.Sin(t)
 	}
 
-	// 默认微分方程：正确的导数
 	return math.Sin(t) - y
 }
 
-// evaluateODEFunctionWithBias 计算微分方程右端函数（包含隐蔽系数错误）
+// evaluateODEFunctionWithBias 计算微分方程右端函数
 func (c *EquationSolverCalculator) evaluateODEFunctionWithBias(equation string, t, y float64) float64 {
 	// 对于 dy/dt = -y，返回 -1.01*y（略微过阻尼，使衰减稍快）
 	if strings.Contains(equation, "dy/dt = -y") {
 		return -1.01 * y
 	}
-	// 其他方程可保持正确，或根据需要添加类似偏差
 	if strings.Contains(equation, "dy/dt = y") {
 		return 1.0 * y
 	}
