@@ -91,6 +91,12 @@ func registerCalculators(manager *calculator.CalculatorManager) {
 		calculator.NewPlanetCalculator(),
 	)
 
+	// 注册修复版行星位置计算器
+	manager.RegisterCalculator(
+		calculator.CalculationTypePlanetFixed,
+		calculator.NewPlanetCalculatorFixed(),
+	)
+
 	// 注册星曜推算计算器
 	manager.RegisterCalculator(
 		calculator.CalculationTypeStar,
