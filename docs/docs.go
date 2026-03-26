@@ -61,6 +61,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "修复了赤经归一化和轨道计算的行星位置计算接口",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "修复版行星位置计算",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -117,6 +163,52 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "对比行星位置计算的原始版本和修复版本的结果差异",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比原始和修复后的计算结果",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }

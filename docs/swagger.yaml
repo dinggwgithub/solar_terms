@@ -135,6 +135,36 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 修复了赤经归一化和轨道计算的行星位置计算接口
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 修复版行星位置计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +206,36 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比行星位置计算的原始版本和修复版本的结果差异
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比原始和修复后的计算结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:
