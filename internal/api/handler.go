@@ -227,12 +227,114 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+	router.POST("/api/solver/compare", h.CompareCalculations)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
 	// 支持接口
 	router.GET("/api/supported-calculations", h.GetSupportedCalculations)
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复版科学计算
+// @Description 执行修复版符号计算，正确实现求导、化简和求值功能
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.Calculation != "symbolic_calc" {
+		h.sendError(c, http.StatusBadRequest, "修复版接口仅支持 symbolic_calc 计算类型")
+		return
+	}
+
+	sessionID := GenerateSessionID()
+
+	fixedCalc := calculator.NewSymbolicCalcCalculatorFixed()
+	result, err := fixedCalc.Calculate(req.GetParams())
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, nil, req.Calculation+"_fixed", sessionID)
+}
+
+// CompareCalculations 对比计算结果接口
+// @Summary 对比修复前后的计算结果
+// @Description 对比原版和修复版符号计算结果，返回差异分析
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} calculator.CompareResult
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) CompareCalculations(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	if req.Calculation != "symbolic_calc" {
+		h.sendError(c, http.StatusBadRequest, "对比接口仅支持 symbolic_calc 计算类型")
+		return
+	}
+
+	calcType, _ := calculator.ParseCalculationType(req.Calculation)
+	sessionID := GenerateSessionID()
+
+	originalResult, _, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "原版计算失败: "+err.Error())
+		return
+	}
+
+	originalSymbolicResult, ok := originalResult.(*calculator.SymbolicResult)
+	if !ok {
+		originalSymbolicResult = convertToSymbolicResult(originalResult)
+	}
+
+	fixedCalc := calculator.NewSymbolicCalcCalculatorFixed()
+	fixedResult, err := fixedCalc.Calculate(req.GetParams())
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "修复版计算失败: "+err.Error())
+		return
+	}
+
+	fixedSymbolicResult, ok := fixedResult.(*calculator.SymbolicResultFixed)
+	if !ok {
+		h.sendError(c, http.StatusBadRequest, "修复版结果类型错误")
+		return
+	}
+
+	compareResult := calculator.CompareResults(originalSymbolicResult, fixedSymbolicResult)
+
+	c.JSON(http.StatusOK, compareResult)
+}
+
+func convertToSymbolicResult(result interface{}) *calculator.SymbolicResult {
+	if result == nil {
+		return nil
+	}
+
+	if sr, ok := result.(*calculator.SymbolicResult); ok {
+		return sr
+	}
+
+	return nil
 }
 
 // GetSupportedCalculations 获取支持的计算类型接口
