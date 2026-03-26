@@ -23,6 +23,30 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareResponse:
+    properties:
+      differences:
+        items:
+          $ref: '#/definitions/api.CompareResult'
+        type: array
+      fixed_result: {}
+      original_result: {}
+      success:
+        type: boolean
+      summary:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  api.CompareResult:
+    properties:
+      description:
+        type: string
+      field:
+        type: string
+      fixed_value: {}
+      original_value: {}
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -135,6 +159,32 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行修复版科学计算，修正北斗七星、二十八宿方位、干支历法等错误
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行修复版科学计算
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -176,6 +226,32 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 对比原始缺陷响应与修复后响应的结构化对比结果
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比原始计算与修复版计算结果
+      tags:
+      - 科学计算
   /api/system-info:
     get:
       consumes:

@@ -61,6 +61,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行修复版科学计算，修正北斗七星、二十八宿方位、干支历法等错误",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行修复版科学计算",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CalculationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -117,6 +157,46 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "对比原始缺陷响应与修复后响应的结构化对比结果",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比原始计算与修复版计算结果",
+                "parameters": [
+                    {
+                        "description": "计算请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CalculationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -180,6 +260,41 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 }
+            }
+        },
+        "api.CompareResponse": {
+            "type": "object",
+            "properties": {
+                "differences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.CompareResult"
+                    }
+                },
+                "fixed_result": {},
+                "original_result": {},
+                "success": {
+                    "type": "boolean"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CompareResult": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "fixed_value": {},
+                "original_value": {}
             }
         },
         "api.ErrorResponse": {
