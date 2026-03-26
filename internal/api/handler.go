@@ -228,11 +228,50 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
 
+	// 修复版科学计算接口
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
 
 	// 支持接口
 	router.GET("/api/supported-calculations", h.GetSupportedCalculations)
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 执行修复版科学计算
+// @Description 执行修复版星曜推算计算，修正历法、干支、星宿归属与方位映射等科学错误
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 只支持star_fixed类型
+	calcType := calculator.CalculationTypeStarFixed
+
+	// 获取或生成会话ID
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 执行计算
+	result, warnings, err := h.calculatorManager.CalculateWithSession(calcType, req.GetParams(), sessionID)
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, warnings, "star_fixed", sessionID)
 }
 
 // GetSupportedCalculations 获取支持的计算类型接口

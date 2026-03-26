@@ -22,6 +22,7 @@ const (
 	CalculationTypeEquationSolver
 	CalculationTypeSymbolicCalc
 	CalculationTypeODESolver
+	CalculationTypeStarFixed // 修复版星曜推算计算器
 )
 
 // String 返回计算类型的字符串表示
@@ -51,6 +52,8 @@ func (ct CalculationType) String() string {
 		return "symbolic_calc"
 	case CalculationTypeODESolver:
 		return "ode_solver"
+	case CalculationTypeStarFixed:
+		return "star_fixed"
 	default:
 		return "unknown"
 	}
@@ -83,6 +86,8 @@ func ParseCalculationType(calcTypeStr string) (CalculationType, error) {
 		return CalculationTypeSymbolicCalc, nil
 	case "ode_solver":
 		return CalculationTypeODESolver, nil
+	case "star_fixed":
+		return CalculationTypeStarFixed, nil
 	default:
 		return CalculationTypeSolarTerm, fmt.Errorf("不支持的计算类型: %s", calcTypeStr)
 	}
