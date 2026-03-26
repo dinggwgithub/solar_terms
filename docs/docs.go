@@ -61,6 +61,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/calculate-fixed": {
+            "post": {
+                "description": "执行修复后的符号计算，支持正确的表达式解析、符号求导和表达式化简。支持两种请求格式：格式1 (直接参数): {\"operation\": \"differentiate\", \"expression\": \"x^3\", \"variable\": \"x\"}；格式2 (嵌套params): {\"calculation\": \"symbolic_calc\", \"params\": {\"operation\": \"differentiate\", \"expression\": \"x^3\", \"variable\": \"x\"}}",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "执行修复版符号计算",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "符号计算请求参数（支持直接参数或嵌套params格式）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SymbolicFixedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/calculator-info": {
             "get": {
                 "description": "获取指定计算器的详细信息",
@@ -117,6 +163,52 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/solver/compare": {
+            "post": {
+                "description": "对比原版和修复版符号计算的结果差异，用于验证修复效果。支持两种请求格式：格式1 (直接参数): {\"operation\": \"differentiate\", \"expression\": \"x^3\", \"variable\": \"x\"}；格式2 (嵌套params): {\"calculation\": \"symbolic_calc\", \"params\": {\"operation\": \"differentiate\", \"expression\": \"x^3\", \"variable\": \"x\"}}",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "科学计算"
+                ],
+                "summary": "对比修复前后的符号计算结果",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "会话ID，用于保持计算参数一致性，不传则自动生成",
+                        "name": "session_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "符号计算对比请求参数（支持直接参数或嵌套params格式）",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SymbolicCompareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -182,6 +274,28 @@ const docTemplate = `{
                 }
             }
         },
+        "api.DifferenceDetail": {
+            "type": "object",
+            "properties": {
+                "expected_value": {
+                    "description": "预期值"
+                },
+                "field": {
+                    "description": "字段名",
+                    "type": "string"
+                },
+                "fixed_value": {
+                    "description": "修复值"
+                },
+                "original_value": {
+                    "description": "原值"
+                },
+                "status": {
+                    "description": "状态: \"fixed\", \"still_wrong\", \"unchanged\"",
+                    "type": "string"
+                }
+            }
+        },
         "api.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -214,6 +328,69 @@ const docTemplate = `{
                 "version": {
                     "type": "string",
                     "example": "1.0.0"
+                }
+            }
+        },
+        "api.SymbolicCompareResponse": {
+            "type": "object",
+            "properties": {
+                "differences": {
+                    "description": "差异详情",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.DifferenceDetail"
+                    }
+                },
+                "expected": {
+                    "description": "预期正确结果",
+                    "type": "string"
+                },
+                "fixed": {
+                    "description": "修复版计算结果"
+                },
+                "is_fixed": {
+                    "description": "是否已修复",
+                    "type": "boolean"
+                },
+                "original": {
+                    "description": "原版计算结果"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SymbolicFixedResponse": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "type": "string"
+                },
+                "fixed": {
+                    "description": "标记为修复版本",
+                    "type": "boolean"
+                },
+                "result": {},
+                "session_id": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
