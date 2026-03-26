@@ -23,6 +23,28 @@ definitions:
       name:
         type: string
     type: object
+  api.CompareResponse:
+    properties:
+      calculation:
+        type: string
+      differences:
+        additionalProperties: true
+        type: object
+      fixed: {}
+      improvements:
+        items:
+          type: string
+        type: array
+      original: {}
+      session_id:
+        type: string
+      success:
+        type: boolean
+      summary:
+        type: string
+      timestamp:
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       code:
@@ -61,39 +83,40 @@ definitions:
   models.CalculationRequest:
     properties:
       calculation:
-        description: 璁＄畻绫诲瀷
+        description: 计算类型
+        example: equation_solver
         type: string
       day:
-        description: 鏃ユ湡
+        description: 日期
         type: integer
       days_from_term:
-        description: 璺濊妭姘斿ぉ鏁?
+        description: 距节气天数
         type: integer
       hour:
-        description: 灏忔椂
+        description: 小时
         type: integer
       minute:
-        description: 鍒嗛挓
+        description: 分钟
         type: integer
       month:
-        description: 鏈堜唤
+        description: 月份
         type: integer
       params:
-        description: 璁＄畻鍙傛暟锛堟牸寮?锛?
+        description: 计算参数（格式1）
       second:
-        description: 绉?
+        description: 秒
         type: integer
       solar_date:
-        description: 闃冲巻鏃ユ湡
+        description: 阳历日期
         type: string
       target_longitude:
-        description: 鐩爣榛勭粡
+        description: 目标黄经
         type: number
       term_index:
-        description: 鑺傛皵绱㈠紩 (0-23)
+        description: 节气索引 (0-23)
         type: integer
       year:
-        description: 鐩存帴鍙傛暟锛堟牸寮?锛?
+        description: 直接参数（格式2）
         type: integer
     required:
     - calculation
@@ -109,7 +132,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 执行各种类型的科学计算
+      description: 执行各种类型的科学计算（原始版本）
       parameters:
       - description: 会话ID，用于保持计算参数一致性，不传则自动生成
         in: query
@@ -135,6 +158,36 @@ paths:
       summary: 执行科学计算
       tags:
       - 科学计算
+  /api/calculate-fixed:
+    post:
+      consumes:
+      - application/json
+      description: 执行各种类型的科学计算（修复版），修正了ODE求解器的数值计算错误，返回严格符合数学要求的计算结果
+      parameters:
+      - description: 会话ID，用于保持计算参数一致性，不传则自动生成
+        in: query
+        name: session_id
+        type: string
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CalculationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 执行科学计算（修复版）
+      tags:
+      - 科学计算
   /api/calculator-info:
     get:
       consumes:
@@ -142,7 +195,7 @@ paths:
       description: 获取指定计算器的详细信息
       parameters:
       - description: '计算类型: solar_term, ganzhi, astronomy, starting_age, lunar, planet,
-          star, sunrise_sunset, moon_phase'
+          star, sunrise_sunset, moon_phase, equation_solver'
         in: query
         name: calculation
         required: true
@@ -176,6 +229,48 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /api/solver/compare:
+    post:
+      consumes:
+      - application/json
+      description: 同时执行原始版和修复版计算，返回字段级的差异对比，用于验证修复效果
+      parameters:
+      - description: 计算请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CalculationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: 对比原始版与修复版求解器
+      tags:
+      - 科学计算
+  /api/supported-calculations:
+    get:
+      consumes:
+      - application/json
+      description: 获取系统支持的所有计算类型列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取支持的计算类型
+      tags:
+      - 计算器管理
   /api/system-info:
     get:
       consumes:
