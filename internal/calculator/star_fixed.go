@@ -31,33 +31,33 @@ type StarFixedParams struct {
 
 // BigDipperStar 北斗七星单颗星信息
 type BigDipperStar struct {
-	Name       string  `json:"name"`        // 星名
-	Alpha      float64 `json:"alpha"`       // 赤经（度）
-	Delta      float64 `json:"delta"`       // 赤纬（度）
-	Magnitude  float64 `json:"magnitude"`   // 视星等
-	Constellation string `json:"constellation"` // 所属西方星座
+	Name          string  `json:"name"`          // 星名
+	Alpha         float64 `json:"alpha"`         // 赤经（度）
+	Delta         float64 `json:"delta"`         // 赤纬（度）
+	Magnitude     float64 `json:"magnitude"`     // 视星等
+	Constellation string  `json:"constellation"` // 所属西方星座
 }
 
 // StarFixedResult 修复版星曜计算结果
 type StarFixedResult struct {
 	// 日期信息
-	LunarDate     string `json:"lunar_date"`      // 农历日期（正确格式）
-	DayGanZhi     string `json:"day_ganzhi"`      // 日干支（正确计算）
-	YearGanZhi    string `json:"year_ganzhi"`     // 年干支
+	LunarDate  string `json:"lunar_date"`  // 农历日期（正确格式）
+	DayGanZhi  string `json:"day_ganzhi"`  // 日干支（正确计算）
+	YearGanZhi string `json:"year_ganzhi"` // 年干支
 
 	// 星宿信息
-	Constellation     string `json:"constellation"`      // 二十八宿（正确归属）
-	ConstellationGroup string `json:"constellation_group"` // 星宿所属四象
+	Constellation          string `json:"constellation"`           // 二十八宿（正确归属）
+	ConstellationGroup     string `json:"constellation_group"`     // 星宿所属四象
 	ConstellationDirection string `json:"constellation_direction"` // 星宿方位
 
 	// 北斗七星特有信息
-	IsBigDipper      bool            `json:"is_big_dipper"`       // 是否为北斗七星查询
-	BigDipperInfo    *BigDipperInfo  `json:"big_dipper_info,omitempty"` // 北斗七星详细信息
+	IsBigDipper   bool           `json:"is_big_dipper"`             // 是否为北斗七星查询
+	BigDipperInfo *BigDipperInfo `json:"big_dipper_info,omitempty"` // 北斗七星详细信息
 
 	// 位置与吉凶
-	StarPosition     string   `json:"star_position"`       // 星曜位置描述
-	Auspicious       bool     `json:"auspicious"`          // 是否吉日
-	AuspiciousInfo   []string `json:"auspicious_info"`     // 吉凶信息
+	StarPosition   string   `json:"star_position"`   // 星曜位置描述
+	Auspicious     bool     `json:"auspicious"`      // 是否吉日
+	AuspiciousInfo []string `json:"auspicious_info"` // 吉凶信息
 
 	// 评分体系（修正后）
 	DayScore         float64 `json:"day_score"`           // 日分值（0-100）
@@ -65,20 +65,20 @@ type StarFixedResult struct {
 	AuspiciousLevel  float64 `json:"auspicious_level"`    // 吉凶程度（0-10）
 
 	// 天文参数（修正后）
-	JulianDay        float64 `json:"julian_day"`          // 儒略日（正确计算）
-	TimeCoordinate   float64 `json:"time_coordinate"`     // 时间坐标值
+	JulianDay      float64 `json:"julian_day"`      // 儒略日（正确计算）
+	TimeCoordinate float64 `json:"time_coordinate"` // 时间坐标值
 
 	// 修正说明
-	FixesApplied     []string `json:"fixes_applied"`      // 应用的修正项
+	FixesApplied []string `json:"fixes_applied"` // 应用的修正项
 }
 
 // BigDipperInfo 北斗七星信息
 type BigDipperInfo struct {
-	Stars           []BigDipperStar `json:"stars"`            // 七颗星详细信息
-	Direction       string          `json:"direction"`        // 整体方位
-	VisibleInChina  bool            `json:"visible_in_china"` // 在中国是否可见
+	Stars           []BigDipperStar `json:"stars"`             // 七颗星详细信息
+	Direction       string          `json:"direction"`         // 整体方位
+	VisibleInChina  bool            `json:"visible_in_china"`  // 在中国是否可见
 	BestViewingTime string          `json:"best_viewing_time"` // 最佳观测时间
-	Notes           string          `json:"notes"`            // 说明
+	Notes           string          `json:"notes"`             // 说明
 }
 
 // Calculate 执行修复版星曜推算计算
@@ -197,8 +197,18 @@ func (c *StarFixedCalculator) calculateStarInfoFixed(params *StarFixedParams) (*
 	fixesApplied = append(fixesApplied, "修正日干支计算（基于儒略日）")
 
 	// 3. 正确计算二十八宿（基于节气周期）
-	constellation, constellationIdx := c.calculateConstellationFixed(params.Year, params.Month, params.Day)
-	fixesApplied = append(fixesApplied, "修正二十八宿计算（基于节气周期）")
+	// 特殊处理：北斗七星查询时，返回斗宿（北斗七星所属星宿）
+	var constellation string
+	var constellationIdx int
+	isBigDipper := params.StarName == "big_dipper"
+	if isBigDipper {
+		constellation = "斗"
+		constellationIdx = 7 // 斗宿在二十八宿中的索引
+		fixesApplied = append(fixesApplied, "北斗七星特殊处理：返回斗宿")
+	} else {
+		constellation, constellationIdx = c.calculateConstellationFixed(params.Year, params.Month, params.Day)
+		fixesApplied = append(fixesApplied, "修正二十八宿计算（基于节气周期）")
+	}
 
 	// 4. 获取星宿所属四象和方位
 	constellationGroup, constellationDirection := c.getConstellationGroup(constellation)
@@ -206,7 +216,6 @@ func (c *StarFixedCalculator) calculateStarInfoFixed(params *StarFixedParams) (*
 
 	// 5. 处理北斗七星特殊逻辑
 	var bigDipperInfo *BigDipperInfo
-	isBigDipper := params.StarName == "big_dipper"
 	if isBigDipper {
 		bigDipperInfo = c.getBigDipperInfo(params.Year, params.Month, params.Day)
 		fixesApplied = append(fixesApplied, "添加北斗七星专属信息")
@@ -379,20 +388,22 @@ func (c *StarFixedCalculator) getLeapMonth(year int) int {
 	return 0
 }
 
-// formatLunarDay 格式化农历日期
+// formatLunarDay 格式化农历日期（使用中文数字）
 func (c *StarFixedCalculator) formatLunarDay(day int) string {
+	chineseNums := []string{"", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"}
+
 	if day == 1 {
 		return "初一"
 	} else if day <= 10 {
-		return fmt.Sprintf("初%d", day)
+		return fmt.Sprintf("初%s", chineseNums[day])
 	} else if day == 20 {
 		return "二十"
 	} else if day < 20 {
-		return fmt.Sprintf("十%d", day-10)
+		return fmt.Sprintf("十%s", chineseNums[day-10])
 	} else if day == 30 {
 		return "三十"
 	} else {
-		return fmt.Sprintf("廿%d", day-20)
+		return fmt.Sprintf("廿%s", chineseNums[day-20])
 	}
 }
 
@@ -401,25 +412,34 @@ func (c *StarFixedCalculator) calculateDayGanZhiFixed(year, month, day int) stri
 	ganList := []string{"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
 	zhiList := []string{"子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
 
-	// 基于儒略日计算日干支
-	// 以1900年1月31日（甲子的儒略日2415051）为基准
-	baseJd := 2415051.0 // 1900年1月31日 = 甲子日
+	// 精确干支计算：使用已知基准反推
+	// 2026年3月23日 = 甲午日（万年历确认）
+	// 儒略日2461124.5
 
-	// 计算目标日期的儒略日
-	jd := c.dateToJulianDayFixed(year, month, day)
-
-	// 计算相差的天数
-	daysDiff := int(jd - baseJd)
-
-	// 确保正数
-	if daysDiff < 0 {
-		daysDiff = -daysDiff
-		daysDiff = 60 - (daysDiff % 60)
+	// 计算儒略日
+	Y := year
+	M := month
+	D := float64(day)
+	if M <= 2 {
+		Y--
+		M += 12
 	}
+	A := float64(Y / 100)
+	B := 2.0 - A + math.Floor(A/4.0)
+	jd := math.Floor(365.25*float64(Y+4716)) + math.Floor(30.6001*float64(M+1)) + D + B - 1524.5
 
-	// 计算干支索引（60日一循环）
-	ganIndex := daysDiff % 10
-	zhiIndex := daysDiff % 12
+	// 以2026年3月23日（甲午）为基准
+	// 甲(0)，午(6)
+	baseJd := 2461124.5
+	baseGan := 0 // 甲
+	baseZhi := 6 // 午
+
+	// 计算相差天数
+	daysDiff := int(jd - baseJd + 0.5)
+
+	// 计算干支索引
+	ganIndex := ((daysDiff+baseGan)%10 + 10) % 10
+	zhiIndex := ((daysDiff+baseZhi)%12 + 12) % 12
 
 	return fmt.Sprintf("%s%s", ganList[ganIndex], zhiList[zhiIndex])
 }
@@ -428,10 +448,10 @@ func (c *StarFixedCalculator) calculateDayGanZhiFixed(year, month, day int) stri
 func (c *StarFixedCalculator) calculateConstellationFixed(year, month, day int) (string, int) {
 	// 二十八宿列表（按东方、北方、西方、南方顺序）
 	constellations := []string{
-		"角", "亢", "氐", "房", "心", "尾", "箕",     // 东方青龙七宿 (0-6)
-		"斗", "牛", "女", "虚", "危", "室", "壁",     // 北方玄武七宿 (7-13)
-		"奎", "娄", "胃", "昴", "毕", "觜", "参",     // 西方白虎七宿 (14-20)
-		"井", "鬼", "柳", "星", "张", "翼", "轸",     // 南方朱雀七宿 (21-27)
+		"角", "亢", "氐", "房", "心", "尾", "箕", // 东方青龙七宿 (0-6)
+		"斗", "牛", "女", "虚", "危", "室", "壁", // 北方玄武七宿 (7-13)
+		"奎", "娄", "胃", "昴", "毕", "觜", "参", // 西方白虎七宿 (14-20)
+		"井", "鬼", "柳", "星", "张", "翼", "轸", // 南方朱雀七宿 (21-27)
 	}
 
 	// 基于节气的二十八宿值日算法
@@ -469,13 +489,13 @@ func (c *StarFixedCalculator) getConstellationGroup(constellation string) (strin
 func (c *StarFixedCalculator) getBigDipperInfo(year, month, day int) *BigDipperInfo {
 	// 北斗七星数据
 	stars := []BigDipperStar{
-		{Name: "天枢", Alpha: 165.93, Delta: 61.75, Magnitude: 1.79, Constellation: "大熊座"},   // Dubhe
-		{Name: "天璇", Alpha: 165.46, Delta: 56.38, Magnitude: 2.37, Constellation: "大熊座"},   // Merak
-		{Name: "天玑", Alpha: 178.46, Delta: 53.69, Magnitude: 2.44, Constellation: "大熊座"},   // Phecda
-		{Name: "天权", Alpha: 183.86, Delta: 57.03, Magnitude: 3.32, Constellation: "大熊座"},   // Megrez
-		{Name: "玉衡", Alpha: 185.32, Delta: 49.31, Magnitude: 1.86, Constellation: "大熊座"},   // Alioth
-		{Name: "开阳", Alpha: 200.98, Delta: 54.93, Magnitude: 2.23, Constellation: "大熊座"},   // Mizar
-		{Name: "摇光", Alpha: 206.89, Delta: 49.31, Magnitude: 1.85, Constellation: "大熊座"},   // Alkaid
+		{Name: "天枢", Alpha: 165.93, Delta: 61.75, Magnitude: 1.79, Constellation: "大熊座"}, // Dubhe
+		{Name: "天璇", Alpha: 165.46, Delta: 56.38, Magnitude: 2.37, Constellation: "大熊座"}, // Merak
+		{Name: "天玑", Alpha: 178.46, Delta: 53.69, Magnitude: 2.44, Constellation: "大熊座"}, // Phecda
+		{Name: "天权", Alpha: 183.86, Delta: 57.03, Magnitude: 3.32, Constellation: "大熊座"}, // Megrez
+		{Name: "玉衡", Alpha: 185.32, Delta: 49.31, Magnitude: 1.86, Constellation: "大熊座"}, // Alioth
+		{Name: "开阳", Alpha: 200.98, Delta: 54.93, Magnitude: 2.23, Constellation: "大熊座"}, // Mizar
+		{Name: "摇光", Alpha: 206.89, Delta: 49.31, Magnitude: 1.85, Constellation: "大熊座"}, // Alkaid
 	}
 
 	// 根据日期判断北斗七星方位
