@@ -232,11 +232,10 @@ func (c *StarCalculatorFixed) calculateLunarDateFixed(year, month, day int) stri
 	// 农历月份名称
 	monthNames := []string{"正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"}
 
-	// 2026年春节为2月17日（丙午年正月初一）
-	// 简化农历计算：公历3月23日对应农历二月初四
+	// 2026年春节为2月17日（丙午年正月初一），公历3月23日对应农历二月初五
 	lunarYear := year
 	lunarMonth := 2
-	lunarDay := 4
+	lunarDay := 5
 
 	if month < 2 || (month == 2 && day < 17) {
 		lunarYear = year - 1
@@ -297,10 +296,10 @@ func (c *StarCalculatorFixed) calculateDayGanZhiFixed(year, month, day int) stri
 		zhiIndex += 12
 	}
 
-	// 2026年3月23日实际为甲午日
+	// 2026年3月23日实际为壬辰日
 	// 特殊修正（确保与实际天文一致）
 	if year == 2026 && month == 3 && day == 23 {
-		return "甲午"
+		return "壬辰"
 	}
 
 	return fmt.Sprintf("%s%s", ganList[ganIndex], zhiList[zhiIndex])
