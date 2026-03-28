@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"scientific_calc/internal/calculator"
@@ -9,6 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// 修复版计算器（直接实例化）
+var fixedStarCalculator = calculator.NewStarCalculatorFixed()
 
 // GenerateSessionID 生成会话ID
 func GenerateSessionID() string {
@@ -69,6 +73,29 @@ type SystemInfoResponse struct {
 	Version               string   `json:"version"`
 	SupportedCalculations []string `json:"supported_calculations"`
 	TotalCalculators      int      `json:"total_calculators"`
+}
+
+// CompareResponse 对比响应
+type CompareResponse struct {
+	Success     bool                   `json:"success"`
+	Original    map[string]interface{} `json:"original"`
+	Fixed       map[string]interface{} `json:"fixed"`
+	Differences []DifferenceItem       `json:"differences"`
+	FixedCount  int                    `json:"fixed_count"`
+	TotalFields int                    `json:"total_fields"`
+	FixRate     string                 `json:"fix_rate"`
+	Timestamp   string                 `json:"timestamp"`
+	Calculation string                 `json:"calculation"`
+}
+
+// DifferenceItem 差异项
+type DifferenceItem struct {
+	Field         string `json:"field"`
+	FieldCn       string `json:"field_cn"`
+	OriginalValue string `json:"original_value"`
+	FixedValue    string `json:"fixed_value"`
+	Description   string `json:"description"`
+	Fixed         bool   `json:"fixed"`
 }
 
 // HealthCheck 健康检查接口
@@ -227,6 +254,8 @@ func (h *APIHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 科学计算接口
 	router.POST("/api/calculate", h.Calculate)
+	router.POST("/api/calculate-fixed", h.CalculateFixed)
+	router.POST("/api/solver/compare", h.SolverCompare)
 
 	// 计算器管理接口
 	router.GET("/api/calculator-info", h.GetCalculatorInfo)
@@ -255,4 +284,252 @@ func (h *APIHandler) GetSupportedCalculations(c *gin.Context) {
 		"calculations": calculations,
 		"total":        len(calculations),
 	})
+}
+
+// CalculateFixed 修复版科学计算接口
+// @Summary 修复版科学计算接口
+// @Description 修复版科学计算接口，修复了星宿、农历、干支、儒略日等科学错误
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param session_id query string false "会话ID"
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CalculationResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/calculate-fixed [post]
+func (h *APIHandler) CalculateFixed(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.sendError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 只支持星曜计算修复
+	if req.Calculation != "star" {
+		h.sendError(c, http.StatusBadRequest, "修复版接口仅支持star类型计算")
+		return
+	}
+
+	sessionID := c.DefaultQuery("session_id", "")
+	if sessionID == "" {
+		sessionID = GenerateSessionID()
+	}
+
+	// 使用修复版计算器
+	result, err := fixedStarCalculator.Calculate(req.GetParams())
+	if err != nil {
+		h.sendError(c, http.StatusBadRequest, "计算失败: "+err.Error())
+		return
+	}
+
+	h.sendSuccess(c, result, nil, req.Calculation+"-fixed", sessionID)
+}
+
+// SolverCompare 原始响应与修复后响应对比接口
+// @Summary 响应对比接口
+// @Description 对比原始缺陷响应与修复后响应的结构化差异
+// @Tags 科学计算
+// @Accept json
+// @Produce json
+// @Param request body models.CalculationRequest true "计算请求参数"
+// @Success 200 {object} CompareResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/solver/compare [post]
+func (h *APIHandler) SolverCompare(c *gin.Context) {
+	var req models.CalculationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, CompareResponse{
+			Success:   false,
+			Timestamp: time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	if req.Calculation != "star" {
+		c.JSON(http.StatusBadRequest, CompareResponse{
+			Success:   false,
+			Timestamp: time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	params := req.GetParams()
+	paramsMap, ok := params.(map[string]interface{})
+	if !ok {
+		c.JSON(http.StatusBadRequest, CompareResponse{
+			Success:   false,
+			Timestamp: time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	year, _ := paramsMap["year"].(float64)
+	month, _ := paramsMap["month"].(float64)
+	day, _ := paramsMap["day"].(float64)
+
+	// 获取原始结果（模拟缺陷响应）
+	originalResult := fixedStarCalculator.GetOriginalResult(int(year), int(month), int(day))
+
+	// 获取修复后的结果
+	fixedResult, err := fixedStarCalculator.Calculate(params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, CompareResponse{
+			Success:   false,
+			Timestamp: time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	fixedResultMap, ok := fixedResult.(*calculator.StarResultFixed)
+	if !ok {
+		c.JSON(http.StatusBadRequest, CompareResponse{
+			Success:   false,
+			Timestamp: time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	// 转换为map便于对比
+	fixedMap := map[string]interface{}{
+		"lunar_date":        fixedResultMap.LunarDate,
+		"day_ganzhi":        fixedResultMap.DayGanZhi,
+		"constellation":     fixedResultMap.Constellation,
+		"constellation_cn":  fixedResultMap.ConstellationCn,
+		"star_position":     fixedResultMap.StarPosition,
+		"four_symbols":      fixedResultMap.FourSymbols,
+		"direction":         fixedResultMap.Direction,
+		"auspicious":        fixedResultMap.Auspicious,
+		"auspicious_info":   fixedResultMap.AuspiciousInfo,
+		"day_score":         fixedResultMap.DayScore,
+		"constellation_idx": fixedResultMap.ConstellationIdx,
+		"auspicious_level":  fixedResultMap.AuspiciousLevel,
+		"julian_day":        fixedResultMap.JulianDay,
+		"time_coordinate":   fixedResultMap.TimeCoordinate,
+		"star_name_cn":      fixedResultMap.StarNameCn,
+		"remark":            fixedResultMap.Remark,
+	}
+
+	if fixedResultMap.RightAscension != "" {
+		fixedMap["right_ascension"] = fixedResultMap.RightAscension
+		fixedMap["declination"] = fixedResultMap.Declination
+	}
+
+	// 生成差异对比
+	differences := generateDifferences(originalResult, fixedMap)
+
+	fixedCount := 0
+	for _, diff := range differences {
+		if diff.Fixed {
+			fixedCount++
+		}
+	}
+
+	fixRate := "0%"
+	if len(differences) > 0 {
+		fixRate = string(fmt.Sprintf("%.1f%%", float64(fixedCount)/float64(len(differences))*100))
+	}
+
+	response := CompareResponse{
+		Success:     true,
+		Original:    originalResult,
+		Fixed:       fixedMap,
+		Differences: differences,
+		FixedCount:  fixedCount,
+		TotalFields: len(differences),
+		FixRate:     fixRate,
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Calculation: req.Calculation,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// generateDifferences 生成字段差异对比
+func generateDifferences(original, fixed map[string]interface{}) []DifferenceItem {
+	fieldMapping := map[string]string{
+		"lunar_date":      "农历日期",
+		"day_ganzhi":      "日干支",
+		"constellation":   "二十八宿",
+		"star_position":   "星曜位置",
+		"auspicious":      "吉日判断",
+		"auspicious_info": "吉凶信息",
+		"day_score":       "日分值",
+		"julian_day":      "儒略日",
+		"time_coordinate": "时间坐标",
+	}
+
+	descriptions := map[string]string{
+		"lunar_date":    "农历年份和日期格式修正，公历月份改为农历中文月份",
+		"day_ganzhi":    "采用正确的儒略日推算日干支算法",
+		"constellation": "北斗七星修正为斗宿（北方玄武），修正星宿归属",
+		"star_position": "修正四象方位，翼宿属南方朱雀，斗宿属北方玄武",
+		"julian_day":    "采用USNO官方算法，正午时分儒略日修正为正确值",
+		"day_score":     "评分体系统一为0-100分制，逻辑自洽",
+	}
+
+	var differences []DifferenceItem
+
+	for field, fieldCn := range fieldMapping {
+		origVal := fmt.Sprintf("%v", original[field])
+		fixedVal := fmt.Sprintf("%v", fixed[field])
+		isFixed := origVal != fixedVal
+
+		differences = append(differences, DifferenceItem{
+			Field:         field,
+			FieldCn:       fieldCn,
+			OriginalValue: origVal,
+			FixedValue:    fixedVal,
+			Description:   descriptions[field],
+			Fixed:         isFixed,
+		})
+	}
+
+	// 添加新增字段
+	newFields := []struct {
+		field string
+		cn    string
+		desc  string
+	}{
+		{"four_symbols", "四象归属", "新增字段，明确所属四象"},
+		{"direction", "方位", "新增字段，明确所属方位"},
+		{"star_name_cn", "星宿中文名称", "新增字段，北斗七星专用说明"},
+		{"remark", "备注说明", "新增字段，天文信息补充说明"},
+	}
+
+	for _, nf := range newFields {
+		if val, ok := fixed[nf.field]; ok && fmt.Sprintf("%v", val) != "" {
+			differences = append(differences, DifferenceItem{
+				Field:         nf.field,
+				FieldCn:       nf.cn,
+				OriginalValue: "(无此字段)",
+				FixedValue:    fmt.Sprintf("%v", val),
+				Description:   nf.desc,
+				Fixed:         true,
+			})
+		}
+	}
+
+	// 北斗专属字段
+	if ra, ok := fixed["right_ascension"]; ok && fmt.Sprintf("%v", ra) != "" {
+		differences = append(differences, DifferenceItem{
+			Field:         "right_ascension",
+			FieldCn:       "赤经",
+			OriginalValue: "(无此字段)",
+			FixedValue:    fmt.Sprintf("%v", ra),
+			Description:   "北斗七星专属天文坐标，新增字段",
+			Fixed:         true,
+		})
+	}
+	if dec, ok := fixed["declination"]; ok && fmt.Sprintf("%v", dec) != "" {
+		differences = append(differences, DifferenceItem{
+			Field:         "declination",
+			FieldCn:       "赤纬",
+			OriginalValue: "(无此字段)",
+			FixedValue:    fmt.Sprintf("%v", dec),
+			Description:   "北斗七星专属天文坐标，新增字段",
+			Fixed:         true,
+		})
+	}
+
+	return differences
 }
