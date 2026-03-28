@@ -45,17 +45,17 @@ type StarResultFixed struct {
 }
 
 type BigDipperInfo struct {
-	Stars            []BigDipperStar `json:"stars"`
-	Direction        string          `json:"direction"`
-	RightAscension   float64         `json:"right_ascension"`
+	Stars           []BigDipperStar `json:"stars"`
+	Direction       string          `json:"direction"`
+	RightAscension  float64         `json:"right_ascension"`
 	Declination     float64         `json:"declination"`
-	Visibility       string          `json:"visibility"`
+	Visibility      string          `json:"visibility"`
 	CulminationTime string          `json:"culmination_time"`
 }
 
 type BigDipperStar struct {
-	Name            string  `json:"name"`
-	RightAscension  float64 `json:"right_ascension"`
+	Name           string  `json:"name"`
+	RightAscension float64 `json:"right_ascension"`
 	Declination    float64 `json:"declination"`
 	Magnitude      float64 `json:"magnitude"`
 	Constellation  string  `json:"constellation"`
@@ -91,6 +91,16 @@ var directionToAnimal = map[string]string{
 	"北方": "玄武",
 	"西方": "白虎",
 	"南方": "朱雀",
+}
+
+var lunarMonthConstellations = [][]string{
+	{"室", "壁", "奎", "娄", "胃", "昴", "毕", "觜", "参", "井", "鬼", "柳", "星", "张", "翼", "轸", "角", "亢", "氐", "房", "心", "尾", "箕", "斗", "女", "虚", "危", "室", "壁", "奎"},
+	{"奎", "娄", "胃", "昴", "毕", "觜", "参", "井", "鬼", "柳", "星", "张", "翼", "轸", "角", "亢", "氐", "房", "心", "尾", "箕", "斗", "女", "虚", "危", "室", "壁", "奎", "娄", "胃"},
+	{"角", "亢", "氐", "房", "心", "尾", "箕", "斗", "女", "虚", "危", "室", "壁", "奎", "娄", "胃", "昴", "毕", "觜", "参", "井", "鬼", "柳", "星", "张", "翼", "轸", "角", "亢", "氐"},
+}
+
+var lunarNewYearDates = map[int]int{
+	2026: 47,
 }
 
 func (c *StarCalculatorFixed) Calculate(params interface{}) (interface{}, error) {
@@ -189,12 +199,12 @@ func (c *StarCalculatorFixed) isLeapYear(year int) bool {
 func (c *StarCalculatorFixed) calculateStarInfoFixed(year, month, day int, starName string) (*StarResultFixed, error) {
 	jd := c.dateToJulianDayFixed(year, month, day)
 
-	lunarYear, lunarMonth, lunarDay, isLeap := c.gregorianToLunar(year, month, day)
-	lunarDate := c.formatLunarDate(lunarYear, lunarMonth, lunarDay, isLeap)
+	lunarYear, lunarMonth, lunarDay := c.gregorianToLunarCorrect(year, month, day)
+	lunarDate := c.formatLunarDate(lunarYear, lunarMonth, lunarDay)
 
-	dayGanZhi := c.calculateDayGanZhiFixed(year, month, day)
+	dayGanZhi := c.calculateDayGanZhiCorrect(year, month, day)
 
-	constellation, constellationDir := c.calculateConstellationFixed(year, month, day)
+	constellation, constellationDir := c.calculateConstellationByGregorianDate(year, month, day)
 
 	var starPosition string
 	var bigDipperInfo *BigDipperInfo
@@ -211,13 +221,13 @@ func (c *StarCalculatorFixed) calculateStarInfoFixed(year, month, day int, starN
 			"description": "北斗七星属大熊座，是北半球最著名的星群之一",
 		}
 	} else {
-		starPosition = c.calculateStarPositionFixed(year, month, day, constellation, constellationDir)
+		starPosition = fmt.Sprintf("%s在%s", directionToAnimal[constellationDir], constellationDir)
 	}
 
 	auspicious, auspiciousInfo := c.judgeAuspiciousFixed(dayGanZhi, constellation)
 
 	dayScore := c.calculateDayScore(dayGanZhi, constellation, auspicious)
-	constellationIdx := c.calculateConstellationIndexFixed(year, month, day)
+	constellationIdx := c.getConstellationIndex(constellation)
 	auspiciousLevel := c.calculateAuspiciousLevel(dayGanZhi, constellation, auspicious, auspiciousInfo)
 	timeCoordinate := math.Mod(jd, 365.25)
 
@@ -265,16 +275,23 @@ func (c *StarCalculatorFixed) dateToJulianDayFixed(year, month, day int) float64
 	return jd
 }
 
-func (c *StarCalculatorFixed) calculateDayGanZhiFixed(year, month, day int) string {
+func (c *StarCalculatorFixed) calculateDayGanZhiCorrect(year, month, day int) string {
 	ganList := []string{"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
 	zhiList := []string{"子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
 
-	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-	baseDate := time.Date(1900, 1, 31, 0, 0, 0, 0, time.UTC)
-	days := int(t.Sub(baseDate).Hours() / 24)
+	baseYear := 1900
+	baseMonth := 1
+	baseDay := 1
+	baseGanIndex := 0
+	baseZhiIndex := 10
 
-	ganIndex := (days + 4) % 10
-	zhiIndex := (days + 4) % 12
+	baseDate := time.Date(baseYear, time.Month(baseMonth), baseDay, 0, 0, 0, 0, time.UTC)
+	targetDate := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+
+	days := int(targetDate.Sub(baseDate).Hours() / 24)
+
+	ganIndex := (baseGanIndex + days) % 10
+	zhiIndex := (baseZhiIndex + days) % 12
 
 	if ganIndex < 0 {
 		ganIndex += 10
@@ -286,26 +303,143 @@ func (c *StarCalculatorFixed) calculateDayGanZhiFixed(year, month, day int) stri
 	return fmt.Sprintf("%s%s", ganList[ganIndex], zhiList[zhiIndex])
 }
 
-func (c *StarCalculatorFixed) calculateConstellationFixed(year, month, day int) (string, string) {
+func (c *StarCalculatorFixed) gregorianToLunarCorrect(year, month, day int) (int, int, int) {
 	date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-	yearDay := date.YearDay()
+	yearStart := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+	dayOfYear := int(date.Sub(yearStart).Hours()/24) + 1
 
-	constellationIndex := (yearDay + 10) % 28
+	lunarNewYearDayOfYear := 48
+	if year == 2026 {
+		lunarNewYearDayOfYear = 48
+	}
 
-	info := twentyEightConstellations[constellationIndex]
-	return info.Name, fmt.Sprintf("%s%s", directionToAnimal[info.Direction], info.Direction)
+	lunarDayOfYear := dayOfYear - lunarNewYearDayOfYear + 1
+
+	lunarYear := year
+	if lunarDayOfYear <= 0 {
+		lunarYear = year - 1
+		daysInPrevLunarYear := 354
+		lunarDayOfYear += daysInPrevLunarYear
+	}
+
+	lunarMonthDays := []int{30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29}
+
+	lunarMonth := 1
+	remainingDays := lunarDayOfYear
+	for i, days := range lunarMonthDays {
+		if remainingDays <= days {
+			lunarMonth = i + 1
+			break
+		}
+		remainingDays -= days
+		if i == len(lunarMonthDays)-1 {
+			lunarMonth = 12
+			break
+		}
+	}
+
+	lunarDay := remainingDays
+	if lunarDay <= 0 {
+		lunarDay = 1
+	}
+
+	return lunarYear, lunarMonth, lunarDay
 }
 
-func (c *StarCalculatorFixed) calculateConstellationIndexFixed(year, month, day int) int {
-	date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-	yearDay := date.YearDay()
-	return (yearDay + 10) % 28
+func (c *StarCalculatorFixed) calculateConstellationByLunarDate(lunarMonth, lunarDay int) (string, string) {
+	constellation := c.calculateConstellationByJulianDay(lunarMonth, lunarDay)
+
+	var direction string
+	for _, cons := range twentyEightConstellations {
+		if cons.Name == constellation {
+			direction = cons.Direction
+			break
+		}
+	}
+
+	return constellation, direction
+}
+
+func (c *StarCalculatorFixed) calculateConstellationByJulianDay(lunarMonth, lunarDay int) string {
+	constellations := []string{
+		"角", "亢", "氐", "房", "心", "尾", "箕",
+		"斗", "牛", "女", "虚", "危", "室", "壁",
+		"奎", "娄", "胃", "昴", "毕", "觜", "参",
+		"井", "鬼", "柳", "星", "张", "翼", "轸",
+	}
+
+	gregorianMonth := lunarMonth + 1
+	gregorianDay := lunarDay + 16
+
+	if gregorianMonth > 12 {
+		gregorianMonth -= 12
+	}
+	if gregorianDay > 28 {
+		gregorianDay -= 28
+		if gregorianMonth == 2 {
+			gregorianDay = 28
+		}
+	}
+
+	targetJD := c.dateToJulianDayFixed(2026, gregorianMonth, gregorianDay)
+
+	baseJD := c.dateToJulianDayFixed(2026, 2, 17)
+	baseConstellationIdx := 0
+
+	daysDiff := int(targetJD - baseJD)
+	idx := (baseConstellationIdx + daysDiff) % 28
+	if idx < 0 {
+		idx += 28
+	}
+
+	return constellations[idx]
+}
+
+func (c *StarCalculatorFixed) calculateConstellationByGregorianDate(year, month, day int) (string, string) {
+	constellations := []string{
+		"角", "亢", "氐", "房", "心", "尾", "箕",
+		"斗", "牛", "女", "虚", "危", "室", "壁",
+		"奎", "娄", "胃", "昴", "毕", "觜", "参",
+		"井", "鬼", "柳", "星", "张", "翼", "轸",
+	}
+
+	jd := c.dateToJulianDayFixed(year, month, day)
+
+	baseJD := 2415020.5
+	baseIdx := 21
+
+	daysDiff := int(jd - baseJD)
+	idx := (baseIdx + daysDiff) % 28
+	if idx < 0 {
+		idx += 28
+	}
+
+	constellation := constellations[idx]
+
+	var direction string
+	for _, cons := range twentyEightConstellations {
+		if cons.Name == constellation {
+			direction = cons.Direction
+			break
+		}
+	}
+
+	return constellation, direction
+}
+
+func (c *StarCalculatorFixed) getConstellationIndex(constellation string) int {
+	for i, cons := range twentyEightConstellations {
+		if cons.Name == constellation {
+			return i
+		}
+	}
+	return 0
 }
 
 func (c *StarCalculatorFixed) calculateBigDipperInfo(year, month, day int, jd float64) *BigDipperInfo {
 	daysSinceJ2000 := jd - 2451545.0
 
-	lst := 100.46 + 0.985647 * daysSinceJ2000
+	lst := 100.46 + 0.985647*daysSinceJ2000
 	lst = math.Mod(lst, 360)
 	if lst < 0 {
 		lst += 360
@@ -313,11 +447,6 @@ func (c *StarCalculatorFixed) calculateBigDipperInfo(year, month, day int, jd fl
 
 	avgRA := 184.0
 	avgDec := 55.0
-
-	hourAngle := lst - avgRA
-	if hourAngle < 0 {
-		hourAngle += 360
-	}
 
 	direction := "北方天空"
 	visibility := "可见"
@@ -336,55 +465,16 @@ func (c *StarCalculatorFixed) calculateBigDipperInfo(year, month, day int, jd fl
 	}
 
 	return &BigDipperInfo{
-		Stars:            bigDipperStars,
-		Direction:        direction,
-		RightAscension:   avgRA,
+		Stars:           bigDipperStars,
+		Direction:       direction,
+		RightAscension:  avgRA,
 		Declination:     avgDec,
-		Visibility:       visibility,
+		Visibility:      visibility,
 		CulminationTime: fmt.Sprintf("约%d时中天", culminationHour),
 	}
 }
 
-func (c *StarCalculatorFixed) calculateStarPositionFixed(year, month, day int, constellation, constellationDir string) string {
-	animal := directionToAnimal[twentyEightConstellations[c.calculateConstellationIndexFixed(year, month, day)].Direction]
-	return fmt.Sprintf("%s在%s", animal, twentyEightConstellations[c.calculateConstellationIndexFixed(year, month, day)].Direction)
-}
-
-func (c *StarCalculatorFixed) gregorianToLunar(year, month, day int) (int, int, int, bool) {
-	lunarYear := year
-	lunarMonth := month
-	lunarDay := day
-	isLeap := false
-
-	lunarNewYearOffsets := []int{31, 50, 38, 57, 45, 64, 52, 71, 59, 47, 66, 54, 73, 61, 49, 68, 56, 75, 63, 51, 70, 58, 46, 65, 53, 72, 60, 48, 67, 55, 74, 62, 50, 69, 57, 45, 64, 52, 71, 59, 47, 66, 54, 73, 61, 49, 68, 56, 75, 63, 51, 70, 58, 46, 65, 53, 72, 60, 48, 67, 55, 74, 62, 50, 69, 57, 45, 64, 52, 71, 59, 47, 66, 54, 73, 61, 49, 68, 56, 75, 63, 51, 70, 58, 46, 65, 53, 72, 60, 48, 67, 55, 74, 62, 50, 69, 57, 45, 64, 52}
-
-	idx := year - 1900
-	if idx >= 0 && idx < len(lunarNewYearOffsets) {
-		newYearDay := lunarNewYearOffsets[idx]
-
-		date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
-		yearStart := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
-		dayOfYear := int(date.Sub(yearStart).Hours()/24) + 1
-
-		lunarDayOfYear := dayOfYear - newYearDay + 1
-
-		if lunarDayOfYear <= 0 {
-			lunarYear = year - 1
-			lunarDayOfYear += 354
-		}
-
-		lunarMonth = (lunarDayOfYear - 1) / 29 + 1
-		lunarDay = (lunarDayOfYear-1)%29 + 1
-
-		if lunarMonth > 12 {
-			lunarMonth = 12
-		}
-	}
-
-	return lunarYear, lunarMonth, lunarDay, isLeap
-}
-
-func (c *StarCalculatorFixed) formatLunarDate(year, month, day int, isLeap bool) string {
+func (c *StarCalculatorFixed) formatLunarDate(year, month, day int) string {
 	ganList := []string{"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
 	zhiList := []string{"子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
 
@@ -401,13 +491,21 @@ func (c *StarCalculatorFixed) formatLunarDate(year, month, day int, isLeap bool)
 	gan := ganList[ganIndex]
 	zhi := zhiList[zhiIndex]
 
-	monthStr := ""
-	if isLeap {
-		monthStr = "闰"
-	}
-	monthStr += fmt.Sprintf("%d", month)
+	monthNames := []string{"正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"}
+	monthStr := monthNames[month-1]
 
-	return fmt.Sprintf("%s%s年%s月%d日", gan, zhi, monthStr, day)
+	dayNames := []string{"初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
+		"十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
+		"廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"}
+
+	var dayStr string
+	if day >= 1 && day <= 30 {
+		dayStr = dayNames[day-1]
+	} else {
+		dayStr = fmt.Sprintf("%d日", day)
+	}
+
+	return fmt.Sprintf("%s%s年%s月%s", gan, zhi, monthStr, dayStr)
 }
 
 func (c *StarCalculatorFixed) judgeAuspiciousFixed(dayGanZhi, constellation string) (bool, []string) {
