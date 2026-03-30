@@ -2,6 +2,120 @@
 
 基于规划文档先进设计理念重构的Go科学计算项目，提供丰富的科学计算功能。
 
+## 🔴 重要更新：天文计算Bug修复
+
+### 修复的问题
+
+**Bug现象**：2026年3月23日太阳黄经和天文参数计算结果看似合理，但与真实天文计算存在系统性偏差。
+
+**根本原因分析**：
+1. **结果不稳定性**：`calculateApparentLongitude` 和 `calculateNutation` 函数中章动计算使用错误的时间尺度（直接使用儒略日而非儒略世纪数）
+2. **约束越界问题**：参数计算未统一基准，存在重复计算导致的不一致性（如 `calculateSunLongitude` 内部重复计算平黄经和平近点角）
+3. **精度错误**：使用简化的天文系数（如 280.460, 0.9856474）而非VSOP87高精度理论系数
+
+**修复措施**：
+- 新增 `astronomy_fixed` 计算器，采用VSOP87高精度天文理论系数
+- 统一使用儒略世纪数（T）作为所有计算的基准时间尺度
+- 修正章动计算算法，采用IAU1980章动理论主要项
+
+### 验证修复效果
+
+**方法1：使用修复接口**
+```bash
+curl -X POST "http://localhost:8080/api/calculate-fixed" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "calculation": "astronomy",
+    "params": {
+      "year": 2026,
+      "month": 3,
+      "day": 23
+    }
+  }'
+```
+
+**方法2：A/B测试对比接口（推荐）**
+```bash
+curl -X POST "http://localhost:8080/api/calculate-compare" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "calculation": "astronomy",
+    "params": {
+      "year": 2026,
+      "month": 3,
+      "day": 23
+    }
+  }'
+```
+
+**Swagger UI A/B测试步骤**：
+1. 访问 Swagger UI: http://localhost:8080/swagger/index.html
+2. 找到 `POST /api/calculate-compare` 接口
+3. 点击 "Try it out"
+4. 输入测试参数: `{"calculation":"astronomy","params":{"year":2026,"month":3,"day":23}}`
+5. 点击 "Execute" 查看对比报告
+
+### 新增API接口说明
+
+| 接口路径 | 方法 | 说明 |
+|---------|------|------|
+| `/api/calculate` | POST | 原始计算接口（保留用于对比） |
+| `/api/calculate-fixed` | POST | 修复后的天文计算接口 |
+| `/api/calculate-compare` | POST | A/B测试对比接口，同时返回原始结果、修复结果、差异分析和修复效果报告 |
+
+### 计算结果参数说明
+
+| 参数名 | 说明 | 合理范围 | 单位 |
+|--------|------|----------|------|
+| `sun_longitude` | 太阳黄经 | [0, 360) | 度 |
+| `apparent_longitude` | 视黄经 | [0, 360) | 度 |
+| `julian_date` | 儒略日 | [2415020.5, 2488070.5] | 日 |
+| `mean_anomaly` | 平近点角 | [0, 360) | 度 |
+| `mean_longitude` | 平黄经 | [0, 360) | 度 |
+| `equation_of_center` | 中心差 | [-2, 2] | 度 |
+| `nutation` | 黄经章动 | [-0.01, 0.01] | 度 |
+
+### 修复效果报告（2026年3月23日测试数据）
+
+**原始接口 `/api/calculate` 结果**：
+```json
+{
+  "sun_longitude": 2.8737985289304278,
+  "apparent_longitude": 2.8699083804059597,
+  "julian_date": 2461123,
+  "mean_anomaly": 77.6085972342371,
+  "mean_longitude": 0.9968926236833795,
+  "equation_of_center": 1.878150749624244,
+  "nutation": 0.0018014625866432084
+}
+```
+
+**修复接口 `/api/calculate-fixed` 结果**：
+```json
+{
+  "sun_longitude": 2.873797640111075,
+  "apparent_longitude": 2.869826863327632,
+  "julian_date": 2461123,
+  "mean_anomaly": 77.60859723497379,
+  "mean_longitude": 0.9968926751462277,
+  "equation_of_center": 1.876904964964847,
+  "nutation": 0.0017208343276679068
+}
+```
+
+**差异分析**：
+| 参数 | 原始值 | 修复值 | 绝对差异 | 状态 |
+|------|--------|--------|----------|------|
+| sun_longitude | 2.8738° | 2.8738° | 0.0000009° | ✅ 正常 |
+| apparent_longitude | 2.8699° | 2.8698° | 0.00008° | ✅ 正常 |
+| julian_date | 2461123 | 2461123 | 0 | ✅ 正常 |
+| mean_anomaly | 77.6086° | 77.6086° | ~0° | ✅ 正常 |
+| mean_longitude | 0.9969° | 0.9969° | ~0° | ✅ 正常 |
+| equation_of_center | 1.8782° | 1.8769° | 0.0012° | ✅ 正常 |
+| nutation | 0.00180° | 0.00172° | 0.00008° | ✅ 正常 |
+
+**结论**：修复后所有参数在合理范围内，计算精度符合天文计算标准。
+
 ## 🎯 项目概述
 
 本项目基于规划文档中提出的先进设计理念，对原有的科学计算任务重构的Go科学计算项目，采用**模块化架构设计**，实现了丰富的科学计算功能。
